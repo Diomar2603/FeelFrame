@@ -1,8 +1,8 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from typing import List
 from app.services.videoService import VideoService
-import shutil # Para salvar o arquivo (opcional)
-import os # Para manipulação de caminhos (opcional)
+import shutil 
+import os 
 
 # --- Configuração do Router ---
 router = APIRouter(
