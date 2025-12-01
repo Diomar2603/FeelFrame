@@ -48,6 +48,7 @@ class HeadPose:
     direcao_vertical: str
     raw_pitch: float
     proximidade_z: float
+    raw_roll: Optional[float] = 0.0
 
 @dataclass
 class GazeDirection:
@@ -63,7 +64,7 @@ class GazeDirection:
 class FrameAnalysis:
     """
     Entidade para armazenar o resultado completo da análise de um ÚNICO frame,
-    incluindo os novos campos de engajamento e comportamento.
+    incluindo estado de fluxo.
     """
     
     # --- Metadados de Vínculo ---
@@ -71,15 +72,19 @@ class FrameAnalysis:
     timestamp_ms: int    
     frame_number: int    
 
-    # --- Dados da Análise (do seu exemplo) ---
+    # --- Dados da Análise ---
     emocao: str
     pose_cabeca: HeadPose
     olhar: GazeDirection
     dimensao_comportamental: DimensaoComportamentalEnum
     estimativa_engajamento: EstimativaEngajamentoEnum
     
+    # --- Novos Campos para Melhorias ---
+    emotion_confidence: Optional[float] = 0.0
+    estado_fluxo: bool = False
+    
+    # --- Identificador Único ---
     _id: str = field(default_factory=lambda: str(uuid.uuid4()))
-
 
     def to_dict(self) -> Dict[str, Any]:
         """

@@ -3,7 +3,7 @@ import cv2 as cv
 import numpy as np
 from pymongo.collection import Collection
 from fastapi import UploadFile
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 from app.models.VideoMetadata import VideoMetadata
 from app.services.faceAnalyzer import FaceAnalyzer 
@@ -13,14 +13,13 @@ from app.utils.DatabaseConfig import DatabaseConfig
 class VideoService:
     
     def __init__(self, filePath: str, db_config: DatabaseConfig):
-        
         self.db = db_config.client[db_config.db_name]
         self.video_collection: Collection = self.db["videos"]
         self.frame_analysis_collection: Collection = self.db["frame_analysis"]
         
         self.original_videos_dir = filePath + "\\videos_originais"
-        
-        self.fixed_frame_videos_dir = filePath + "\\" +os.getenv("FIXED_FRAME_VIDEOS_DIR", "videos_quadro_fixo")
+        self.fixed_frame_videos_dir = filePath + "\\" + os.getenv("FIXED_FRAME_VIDEOS_DIR", "videos_quadro_fixo")
+        self.fluxo_frames_dir = filePath + "\\cenas_fluxo"
 
         self.OUTPUT_WIDTH = int(os.getenv("OUTPUT_WIDTH", "480"))
         self.OUTPUT_HEIGHT = int(os.getenv("OUTPUT_HEIGHT", "480"))
@@ -28,17 +27,17 @@ class VideoService:
         try:
             self.frame_analysis_skip_rate = int(os.getenv("FRAME_ANALYSIS_SKIP_RATE", "4"))
             if self.frame_analysis_skip_rate <= 0:
-                print("Aviso: FRAME_ANALYSIS_SKIP_RATE inválido, usando padrão 1 (todos os frames)")
                 self.frame_analysis_skip_rate = 1
         except ValueError:
-            print("Aviso: FRAME_ANALYSIS_SKIP_RATE inválido, usando padrão 5")
             self.frame_analysis_skip_rate = 5
 
+        # Cria diretórios necessários
         os.makedirs(self.fixed_frame_videos_dir, exist_ok=True)
-        os.makedirs(self.original_videos_dir, exist_ok=True) 
+        os.makedirs(self.original_videos_dir, exist_ok=True)
+        os.makedirs(self.fluxo_frames_dir, exist_ok=True)
 
         self.face_analyzer = FaceAnalyzer()
-        
+
     async def saveFile(self, file: UploadFile) -> str:
         """Salva o arquivo de upload no diretório 'original'."""
         safe_filename = os.path.basename(file.filename) 
@@ -51,16 +50,60 @@ class VideoService:
         """Redimensiona um frame para as dimensões de saída."""
         return cv.resize(frame, (width, height), interpolation=cv.INTER_AREA)
 
+    def _salvar_frame_fluxo(self, frame_original, frame_number, timestamp_ms, video_id, analysis):
+        """Salva frame original quando detectado estado de fluxo."""
+        try:
+            # Cria nome do arquivo
+            timestamp_str = f"{timestamp_ms//1000}s_{timestamp_ms%1000:03d}ms"
+            filename = f"fluxo_{video_id}_{frame_number:06d}_{timestamp_str}.jpg"
+            filepath = os.path.join(self.fluxo_frames_dir, filename)
+            
+            # Salva frame com qualidade boa
+            cv.imwrite(filepath, frame_original, [cv.IMWRITE_JPEG_QUALITY, 90])
+            
+            # Retorna metadados
+            return {
+                "frame_number": frame_number,
+                "timestamp_ms": timestamp_ms,
+                "filepath": filepath,
+                "emocao": analysis.emocao,
+                "engajamento": analysis.estimativa_engajamento.value,
+                "dimensao": analysis.dimensao_comportamental.value,
+                "confidence": getattr(analysis, 'emotion_confidence', 0.0)
+            }
+            
+        except Exception as e:
+            print(f"Erro ao salvar frame de fluxo: {e}")
+            return None
+
+    def _salvar_metadados_fluxo(self, video_id, fluxo_frames_info):
+        """Salva metadados dos frames de fluxo no MongoDB."""
+        try:
+            if fluxo_frames_info:
+                fluxo_collection = self.db["fluxo_frames"]
+                for frame_info in fluxo_frames_info:
+                    frame_info["video_id"] = video_id
+                    frame_info["created_at"] = datetime.now(timezone.utc).isoformat()
+                
+                fluxo_collection.insert_many(fluxo_frames_info)
+                print(f"Metadados de {len(fluxo_frames_info)} frames de fluxo salvos no banco.")
+        except Exception as e:
+            print(f"Erro ao salvar metadados de fluxo: {e}")
+
+    def _get_final_message(self, fixed_crop_rect, fluxo_frames_info):
+        """Gera mensagem final baseada nos resultados."""
+        base_message = "Vídeo processado com sucesso."
+        if fixed_crop_rect is None:
+            base_message = "Nenhum rosto detectado com confiança. Quadros pretos foram usados."
+        
+        if fluxo_frames_info:
+            base_message += f" {len(fluxo_frames_info)} cenas de fluxo detectadas e salvas."
+        
+        return base_message
+
     async def processFile(self, file: UploadFile) -> Dict[str, Any]:
         """
-        Orquestra o processo completo:
-        1. Salva o arquivo.
-        2. Extrai metadados.
-        3. Insere registro "processing" no DB de vídeos.
-        4. Processa o vídeo (quadro a quadro), gerando o vídeo de saída
-           E analisando os frames (a cada X quadros).
-        5. Insere as análises de frame no DB de análises.
-        6. Atualiza o DB de vídeos com "success" ou "failed".
+        Processa o vídeo e exporta frames de estado de fluxo.
         """
         output_file_location: str = ""
         original_file_location: str = ""
@@ -71,8 +114,10 @@ class VideoService:
         video_id: Optional[str] = None
 
         black_frame = np.zeros((self.OUTPUT_HEIGHT, self.OUTPUT_WIDTH, 3), dtype=np.uint8)
-
         analysis_results_list = []
+
+        # Lista para armazenar frames de fluxo
+        fluxo_frames_info = []
 
         try:
             original_file_location = await self.saveFile(file)
@@ -87,11 +132,7 @@ class VideoService:
             original_filesize_bytes = os.path.getsize(original_file_location)
             safe_original_filename = os.path.basename(file.filename)
 
-            output_filename = f"quadro_fixo_{safe_original_filename}"
-            if not output_filename.lower().endswith((".mp4", ".avi", ".mov")):
-                output_filename += ".mp4"
-            output_file_location = os.path.join(self.fixed_frame_videos_dir, output_filename)
-
+            # Metadados do vídeo
             video_meta = VideoMetadata(
                 original_filename=safe_original_filename,
                 original_filepath=original_file_location,
@@ -107,47 +148,61 @@ class VideoService:
             video_id = video_meta._id 
             print(f"Iniciando processamento para video_id: {video_id}")
 
+            # Prepara video de saída
             fourcc = cv.VideoWriter_fourcc(*'avc1') 
+            output_filename = f"quadro_fixo_{safe_original_filename}"
+            if not output_filename.lower().endswith((".mp4", ".avi", ".mov")):
+                output_filename += ".mp4"
+            output_file_location = os.path.join(self.fixed_frame_videos_dir, output_filename)
+            
             out = cv.VideoWriter(output_file_location, fourcc, fps, (self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT))
             if not out.isOpened():
-                print(f"Aviso: Falha ao abrir VideoWriter com 'avc1'. Tentando com 'mp4v' para {output_filename}.")
                 fourcc = cv.VideoWriter_fourcc(*'mp4v') 
                 out = cv.VideoWriter(output_file_location, fourcc, fps, (self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT))
                 if not out.isOpened():
-                    raise Exception(f"Erro ao criar VideoWriter para {output_filename} com codecs 'avc1' e 'mp4v'.")
+                    raise Exception(f"Erro ao criar VideoWriter")
 
             input_frame_count = output_frame_count = 0
-            
             frame_skip_rate = self.frame_analysis_skip_rate
             
+            # Cache para detecção de faces
+            face_detection_cache = None
+            cache_valid_frames = 10
+
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
                     break 
-                input_frame_count += 1
                 
+                input_frame_count += 1
                 frame_resized = self.frameResize(frame, self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT)
 
-                if fixed_crop_rect is None:
+                # Detecção de faces
+                if (fixed_crop_rect is None or face_detection_cache is None or 
+                    input_frame_count % cache_valid_frames == 0):
+                    
                     faces = self.face_analyzer.detect_faces(frame_resized)
-                    if len(faces) > 0 and faces[0][4] > 0.8: # Confiança > 80%
+                    if len(faces) > 0 and faces[0][4] > 0.8:
                         x, y, w, h = faces[0][:4].astype(int)
                         cx = max(0, x + w // 2 - self.OUTPUT_WIDTH // 6)
                         cy = max(0, y + h // 2 - self.OUTPUT_HEIGHT // 6)
                         cw = min(self.OUTPUT_WIDTH, frame_resized.shape[1] - cx)
                         ch = min(self.OUTPUT_HEIGHT, frame_resized.shape[0] - cy)
                         fixed_crop_rect = (cx, cy, cw, ch)
+                        face_detection_cache = fixed_crop_rect
+                else:
+                    fixed_crop_rect = face_detection_cache
                 
+                # Prepara frame de saída
                 if fixed_crop_rect:
                     cx, cy, cw, ch = fixed_crop_rect
                     cropped = frame_resized[cy:cy+ch, cx:cx+cw]
-                    if cropped.size > 0:
-                        frame_out = cv.resize(cropped, (self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT), interpolation=cv.INTER_CUBIC)
-                    else:
-                        frame_out = black_frame 
+                    frame_out = cv.resize(cropped, (self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT), 
+                                        interpolation=cv.INTER_CUBIC) if cropped.size > 0 else black_frame
                 else:
-                    frame_out = black_frame 
+                    frame_out = black_frame
 
+                # Análise de frames
                 if (input_frame_count - 1) % frame_skip_rate == 0:
                     try:
                         timestamp_ms = int(cap.get(cv.CAP_PROP_POS_MSEC))
@@ -159,27 +214,41 @@ class VideoService:
                             frame_number=input_frame_count
                         )
                         
+                        # Verifica se é estado de fluxo e salva frame original
+                        if hasattr(analysis_result_obj, 'estado_fluxo') and analysis_result_obj.estado_fluxo:
+                            fluxo_frame_info = self._salvar_frame_fluxo(
+                                frame, input_frame_count, timestamp_ms, video_id, analysis_result_obj
+                            )
+                            if fluxo_frame_info:
+                                fluxo_frames_info.append(fluxo_frame_info)
+                                print(f"Frame de fluxo detectado: {input_frame_count}")
+                        
                         analysis_results_list.append(analysis_result_obj.to_dict())
                         
+                        # Batch processing
+                        if len(analysis_results_list) >= 50:
+                            self.frame_analysis_collection.insert_many(analysis_results_list)
+                            analysis_results_list = []
+                            print(f"Batch de 50 análises inserido para video_id {video_id}")
+                            
                     except Exception as e_analyze:
-                        print(f"Aviso: Falha ao analisar o frame {input_frame_count} para video_id {video_id}. Erro: {e_analyze}")
+                        print(f"Aviso: Falha ao analisar frame {input_frame_count}: {e_analyze}")
 
                 out.write(frame_out)
                 output_frame_count += 1
             
+            # Insere análises restantes
             if analysis_results_list:
-                print(f"Processamento de frames concluído. Inserindo {len(analysis_results_list)} análises no DB...")
                 self.frame_analysis_collection.insert_many(analysis_results_list)
-                print("Análises inseridas com sucesso.")
+                print(f"Último batch de {len(analysis_results_list)} análises inserido.")
+
+            # Salva metadados dos frames de fluxo
+            if fluxo_frames_info:
+                self._salvar_metadados_fluxo(video_id, fluxo_frames_info)
             
-            final_message = "Vídeo processado com sucesso."
-            if input_frame_count == 0:
-                if os.path.exists(output_file_location): os.remove(output_file_location)
-                raise Exception("Vídeo de entrada está vazio ou corrompido.")
-            if fixed_crop_rect is None:
-                final_message = "Nenhum rosto detectado com confiança. Quadros pretos foram usados."
-            
+            # Atualiza banco com resultados
             duration_seconds = (input_frame_count / fps) if fps > 0 else 0.0
+            final_message = self._get_final_message(fixed_crop_rect, fluxo_frames_info)
 
             update_data = {
                 "status": "success",
@@ -187,13 +256,12 @@ class VideoService:
                 "processed_filepath": output_file_location,
                 "frame_count": input_frame_count,
                 "duration_seconds": duration_seconds,
+                "fluxo_frames_count": len(fluxo_frames_info),
                 "fixed_crop_rect_in_source": str(fixed_crop_rect) if fixed_crop_rect else "N/A",
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
-            self.video_collection.update_one(
-                {"_id": video_id},
-                {"$set": update_data}
-            )
+            self.video_collection.update_one({"_id": video_id}, {"$set": update_data})
+
             print(f"Sucesso no processamento do video_id: {video_id}")
 
             return {
@@ -202,15 +270,15 @@ class VideoService:
                 "original_uploaded_filename": safe_original_filename,
                 "fixed_frame_video_location": output_file_location,
                 "input_frames_read": input_frame_count,
-                "frames_analyzed": len(analysis_results_list)
+                "frames_analyzed": len(analysis_results_list),
+                "fluxo_frames_captured": len(fluxo_frames_info)
             }
 
         except Exception as e:
             error_message_str = str(e)
             print(f"Falha no processamento do video_id {video_id}: {error_message_str}")
             
-            # 10. ATUALIZA no MongoDB (Falha)
-            if video_id: # Só atualiza se o registro já foi criado
+            if video_id:
                 self.video_collection.update_one(
                     {"_id": video_id},
                     {"$set": {
@@ -220,16 +288,14 @@ class VideoService:
                     }}
                 )
 
-            # Limpa o arquivo de saída parcialmente criado (se houver)
-            if out and out.isOpened(): out.release()
-            out = None 
+            if out and out.isOpened(): 
+                out.release()
             if output_file_location and os.path.exists(output_file_location):
-                try:
+                try: 
                     os.remove(output_file_location)
                 except Exception as remove_error:
                     print(f"Erro ao tentar remover o arquivo de saída após falha: {remove_error}")
             
-            # Retorna o erro para a API
             return {
                 "filename": file.filename,
                 "status": "falha",
