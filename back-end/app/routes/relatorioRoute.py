@@ -8,9 +8,6 @@ from app.services.relatorioService import (
     )
 from app.utils.DatabaseConfig import DatabaseConfig
 
-
-
-
 router = APIRouter(prefix="/relatorios", tags=["Relatorios"])
 
 # 1. Carrega as variáveis do arquivo .env para o ambiente (os.environ)
@@ -68,12 +65,12 @@ def gerar_relatorio_por_video(
             detail=f"Nenhum dado de análise encontrado para o video_id: {video_id}"
         )
     
-    # 4. Definir um nome de arquivo temporário único
+    # 4. Definir um nome de arquivo temporário único (no servidor)
     temp_filename = f"temp_report_{uuid.uuid4()}.pdf"
     
     # 5. Gerar o PDF
     try:
-        relatorio_service_instance.gerar_relatorio_pdf(temp_filename, lista_analises,video_id )
+        relatorio_service_instance.gerar_relatorio_pdf(temp_filename, lista_analises, video_id)
     except Exception as e:
         # Se a geração do PDF falhar, limpa o arquivo (se existir)
         _cleanup_file(temp_filename)
@@ -86,10 +83,17 @@ def gerar_relatorio_por_video(
     #    que a resposta for enviada.
     background_tasks.add_task(_cleanup_file, temp_filename)
     
-    # 7. Retornar o arquivo como resposta
+    # 7. Buscar o nome original e formatar para o download
+    nome_video = relatorio_service_instance.obter_nome_arquivo_video(video_id)
+    
+    # Remove a extensão original (ex: .mp4) e adiciona .pdf
+    nome_base, _ = os.path.splitext(nome_video)
+    nome_download = f"Relatorio_{nome_base}.pdf"
+
+    # 8. Retornar o arquivo como resposta
     return FileResponse(
         path=temp_filename,
         media_type='application/pdf',
         # Este é o nome que o usuário verá no prompt de download
-        filename=f"relatorio_analise_{video_id}.pdf" 
+        filename=nome_download 
     )

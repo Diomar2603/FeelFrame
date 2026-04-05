@@ -1,13 +1,15 @@
 import os
 import cv2 as cv
 import numpy as np
+import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pymongo.collection import Collection
 from fastapi import UploadFile
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 from app.models.VideoMetadata import VideoMetadata
 from app.services.faceAnalyzer import FaceAnalyzer 
-from app.models.FrameAnalysis import FrameAnalysis
+from app.models.FrameAnalysis import FrameAnalysis, EstimativaEngajamentoEnum
 from app.utils.DatabaseConfig import DatabaseConfig
 
 class VideoService:
@@ -20,23 +22,26 @@ class VideoService:
         self.original_videos_dir = filePath + "\\videos_originais"
         self.fixed_frame_videos_dir = filePath + "\\" + os.getenv("FIXED_FRAME_VIDEOS_DIR", "videos_quadro_fixo")
         self.fluxo_frames_dir = filePath + "\\cenas_fluxo"
+        self.desengajamento_frames_dir = filePath + "\\cenas_desengajamento"  # NOVO: Pasta para alto desengajamento
 
         self.OUTPUT_WIDTH = int(os.getenv("OUTPUT_WIDTH", "480"))
         self.OUTPUT_HEIGHT = int(os.getenv("OUTPUT_HEIGHT", "480"))
         
         try:
-            self.frame_analysis_skip_rate = int(os.getenv("FRAME_ANALYSIS_SKIP_RATE", "4"))
+            self.frame_analysis_skip_rate = int(os.getenv("FRAME_ANALYSIS_SKIP_RATE", "6"))
             if self.frame_analysis_skip_rate <= 0:
                 self.frame_analysis_skip_rate = 1
         except ValueError:
-            self.frame_analysis_skip_rate = 5
+            self.frame_analysis_skip_rate = 6
 
         # Cria diretórios necessários
         os.makedirs(self.fixed_frame_videos_dir, exist_ok=True)
         os.makedirs(self.original_videos_dir, exist_ok=True)
         os.makedirs(self.fluxo_frames_dir, exist_ok=True)
+        os.makedirs(self.desengajamento_frames_dir, exist_ok=True)  # NOVO
 
         self.face_analyzer = FaceAnalyzer()
+        self.thread_pool = ThreadPoolExecutor(max_workers=4)  # NOVO: Pool de threads para processamento paralelo
 
     async def saveFile(self, file: UploadFile) -> str:
         """Salva o arquivo de upload no diretório 'original'."""
@@ -50,13 +55,20 @@ class VideoService:
         """Redimensiona um frame para as dimensões de saída."""
         return cv.resize(frame, (width, height), interpolation=cv.INTER_AREA)
 
-    def _salvar_frame_fluxo(self, frame_original, frame_number, timestamp_ms, video_id, analysis):
-        """Salva frame original quando detectado estado de fluxo."""
+    def _salvar_frame_destaque(self, frame_original, frame_number, timestamp_ms, video_id, analysis, tipo: str):
+        """Salva frame original quando detectado estado de fluxo ou alto desengajamento."""
         try:
-            # Cria nome do arquivo
+            # Cria nome do arquivo baseado no tipo
             timestamp_str = f"{timestamp_ms//1000}s_{timestamp_ms%1000:03d}ms"
-            filename = f"fluxo_{video_id}_{frame_number:06d}_{timestamp_str}.jpg"
-            filepath = os.path.join(self.fluxo_frames_dir, filename)
+            
+            if tipo == "fluxo":
+                filename = f"fluxo_{video_id}_{frame_number:06d}_{timestamp_str}.jpg"
+                filepath = os.path.join(self.fluxo_frames_dir, filename)
+            elif tipo == "desengajamento":
+                filename = f"desengajamento_{video_id}_{frame_number:06d}_{timestamp_str}.jpg"
+                filepath = os.path.join(self.desengajamento_frames_dir, filename)
+            else:
+                return None
             
             # Salva frame com qualidade boa
             cv.imwrite(filepath, frame_original, [cv.IMWRITE_JPEG_QUALITY, 90])
@@ -66,6 +78,7 @@ class VideoService:
                 "frame_number": frame_number,
                 "timestamp_ms": timestamp_ms,
                 "filepath": filepath,
+                "tipo": tipo,
                 "emocao": analysis.emocao,
                 "engajamento": analysis.estimativa_engajamento.value,
                 "dimensao": analysis.dimensao_comportamental.value,
@@ -73,37 +86,39 @@ class VideoService:
             }
             
         except Exception as e:
-            print(f"Erro ao salvar frame de fluxo: {e}")
+            print(f"Erro ao salvar frame de {tipo}: {e}")
             return None
 
-    def _salvar_metadados_fluxo(self, video_id, fluxo_frames_info):
-        """Salva metadados dos frames de fluxo no MongoDB."""
+    def _salvar_metadados_destaque(self, video_id, frames_destaque_info):
+        """Salva metadados dos frames de destaque no MongoDB."""
         try:
-            if fluxo_frames_info:
-                fluxo_collection = self.db["fluxo_frames"]
-                for frame_info in fluxo_frames_info:
+            if frames_destaque_info:
+                destaque_collection = self.db["frames_destaque"]
+                for frame_info in frames_destaque_info:
                     frame_info["video_id"] = video_id
                     frame_info["created_at"] = datetime.now(timezone.utc).isoformat()
                 
-                fluxo_collection.insert_many(fluxo_frames_info)
-                print(f"Metadados de {len(fluxo_frames_info)} frames de fluxo salvos no banco.")
+                destaque_collection.insert_many(frames_destaque_info)
+                print(f"Metadados de {len(frames_destaque_info)} frames de destaque salvos no banco.")
         except Exception as e:
-            print(f"Erro ao salvar metadados de fluxo: {e}")
+            print(f"Erro ao salvar metadados de destaque: {e}")
 
-    def _get_final_message(self, fixed_crop_rect, fluxo_frames_info):
+    def _get_final_message(self, fixed_crop_rect, frames_destaque_info):
         """Gera mensagem final baseada nos resultados."""
         base_message = "Vídeo processado com sucesso."
         if fixed_crop_rect is None:
             base_message = "Nenhum rosto detectado com confiança. Quadros pretos foram usados."
         
-        if fluxo_frames_info:
-            base_message += f" {len(fluxo_frames_info)} cenas de fluxo detectadas e salvas."
+        if frames_destaque_info:
+            fluxo_count = len([f for f in frames_destaque_info if f['tipo'] == 'fluxo'])
+            desengajamento_count = len([f for f in frames_destaque_info if f['tipo'] == 'desengajamento'])
+            base_message += f" {fluxo_count} cenas de fluxo e {desengajamento_count} cenas de desengajamento detectadas."
         
         return base_message
 
     async def processFile(self, file: UploadFile) -> Dict[str, Any]:
         """
-        Processa o vídeo e exporta frames de estado de fluxo.
+        Processa o vídeo e exporta frames de estado de fluxo e alto desengajamento.
         """
         output_file_location: str = ""
         original_file_location: str = ""
@@ -116,8 +131,8 @@ class VideoService:
         black_frame = np.zeros((self.OUTPUT_HEIGHT, self.OUTPUT_WIDTH, 3), dtype=np.uint8)
         analysis_results_list = []
 
-        # Lista para armazenar frames de fluxo
-        fluxo_frames_info = []
+        # Lista para armazenar frames de destaque (fluxo e desengajamento)
+        frames_destaque_info = []
 
         try:
             original_file_location = await self.saveFile(file)
@@ -216,12 +231,21 @@ class VideoService:
                         
                         # Verifica se é estado de fluxo e salva frame original
                         if hasattr(analysis_result_obj, 'estado_fluxo') and analysis_result_obj.estado_fluxo:
-                            fluxo_frame_info = self._salvar_frame_fluxo(
-                                frame, input_frame_count, timestamp_ms, video_id, analysis_result_obj
+                            frame_destaque_info = self._salvar_frame_destaque(
+                                frame, input_frame_count, timestamp_ms, video_id, analysis_result_obj, "fluxo"
                             )
-                            if fluxo_frame_info:
-                                fluxo_frames_info.append(fluxo_frame_info)
+                            if frame_destaque_info:
+                                frames_destaque_info.append(frame_destaque_info)
                                 print(f"Frame de fluxo detectado: {input_frame_count}")
+                        
+                        # NOVO: Verifica se é alto desengajamento e salva frame
+                        elif analysis_result_obj.estimativa_engajamento == EstimativaEngajamentoEnum.ALTAMENTE_DESENGAJADO:
+                            frame_destaque_info = self._salvar_frame_destaque(
+                                frame, input_frame_count, timestamp_ms, video_id, analysis_result_obj, "desengajamento"
+                            )
+                            if frame_destaque_info:
+                                frames_destaque_info.append(frame_destaque_info)
+                                print(f"Frame de alto desengajamento detectado: {input_frame_count}")
                         
                         analysis_results_list.append(analysis_result_obj.to_dict())
                         
@@ -242,13 +266,16 @@ class VideoService:
                 self.frame_analysis_collection.insert_many(analysis_results_list)
                 print(f"Último batch de {len(analysis_results_list)} análises inserido.")
 
-            # Salva metadados dos frames de fluxo
-            if fluxo_frames_info:
-                self._salvar_metadados_fluxo(video_id, fluxo_frames_info)
+            # Salva metadados dos frames de destaque
+            if frames_destaque_info:
+                self._salvar_metadados_destaque(video_id, frames_destaque_info)
             
             # Atualiza banco com resultados
             duration_seconds = (input_frame_count / fps) if fps > 0 else 0.0
-            final_message = self._get_final_message(fixed_crop_rect, fluxo_frames_info)
+            final_message = self._get_final_message(fixed_crop_rect, frames_destaque_info)
+
+            fluxo_count = len([f for f in frames_destaque_info if f['tipo'] == 'fluxo'])
+            desengajamento_count = len([f for f in frames_destaque_info if f['tipo'] == 'desengajamento'])
 
             update_data = {
                 "status": "success",
@@ -256,7 +283,8 @@ class VideoService:
                 "processed_filepath": output_file_location,
                 "frame_count": input_frame_count,
                 "duration_seconds": duration_seconds,
-                "fluxo_frames_count": len(fluxo_frames_info),
+                "fluxo_frames_count": fluxo_count,
+                "desengajamento_frames_count": desengajamento_count,
                 "fixed_crop_rect_in_source": str(fixed_crop_rect) if fixed_crop_rect else "N/A",
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
@@ -271,7 +299,8 @@ class VideoService:
                 "fixed_frame_video_location": output_file_location,
                 "input_frames_read": input_frame_count,
                 "frames_analyzed": len(analysis_results_list),
-                "fluxo_frames_captured": len(fluxo_frames_info)
+                "fluxo_frames_captured": fluxo_count,
+                "desengajamento_frames_captured": desengajamento_count
             }
 
         except Exception as e:
@@ -307,3 +336,64 @@ class VideoService:
                 cap.release()
             if out and out.isOpened(): 
                 out.release()
+
+    # NOVO: Método para processamento em lote com threads
+    async def process_multiple_files(self, files: List[UploadFile]) -> List[Dict[str, Any]]:
+        """
+        Processa múltiplos arquivos em paralelo usando thread pool.
+        """
+        print(f"Iniciando processamento paralelo de {len(files)} arquivos...")
+        
+        # Prepara as tasks para execução paralela
+        tasks = []
+        for file in files:
+            # Cria uma task para cada arquivo
+            task = asyncio.get_event_loop().run_in_executor(
+                self.thread_pool, 
+                self._process_single_file_sync, 
+                file
+            )
+            tasks.append(task)
+        
+        # Executa todas as tasks em paralelo (máximo 4 simultaneamente)
+        results = []
+        for completed_task in asyncio.as_completed(tasks):
+            try:
+                result = await completed_task
+                results.append(result)
+            except Exception as e:
+                results.append({
+                    "filename": "unknown",
+                    "status": "falha",
+                    "error": str(e)
+                })
+        
+        print(f"Processamento paralelo concluído. {len(results)} arquivos processados.")
+        return results
+
+    def _process_single_file_sync(self, file: UploadFile) -> Dict[str, Any]:
+        """
+        Método auxiliar para processar um arquivo de forma síncrona (para uso com thread pool).
+        """
+        # Cria um novo event loop para a thread
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Executa o processamento de forma síncrona
+            result = loop.run_until_complete(self.processFile(file))
+            return result
+        except Exception as e:
+            return {
+                "filename": file.filename,
+                "status": "falha",
+                "error": str(e)
+            }
+        finally:
+            loop.close()
+
+    def __del__(self):
+        """Garante que o thread pool seja fechado adequadamente."""
+        if hasattr(self, 'thread_pool'):
+            self.thread_pool.shutdown(wait=True)
