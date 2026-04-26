@@ -314,31 +314,31 @@ class RelatorioService:
         """
         return {
             # Engajamento
-            EstimativaEngajamentoEnum.ALTAMENTE_ENGAJADO.value: "#00C853",
-            EstimativaEngajamentoEnum.ENGAJADO.value: "#2979FF",
-            EstimativaEngajamentoEnum.DESENGAJADO.value: "#FF9100",
-            EstimativaEngajamentoEnum.ALTAMENTE_DESENGAJADO.value: "#FF1744",
-            EstimativaEngajamentoEnum.INDEFINIDO.value: "#9E9E9E",
-            
+            EstimativaEngajamentoEnum.ALTAMENTE_ENGAJADO.value: "#00C853",  # Verde forte
+            EstimativaEngajamentoEnum.ENGAJADO.value: "#636EFA",            # Azul/roxo
+            EstimativaEngajamentoEnum.DESENGAJADO.value: "#FFA15A",         # Laranja suave
+            EstimativaEngajamentoEnum.ALTAMENTE_DESENGAJADO.value: "#EF553B", # Vermelho
+            EstimativaEngajamentoEnum.INDEFINIDO.value: "#CCCCCC",          # Cinza claro
+
             # Comportamento
-            DimensaoComportamentalEnum.CONCENTRADO.value: "#00E676",
-            DimensaoComportamentalEnum.DISTRAIDO.value: "#FFD600",
-            DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO.value: "#64DD17",
-            DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO.value: "#FF9800",
-            DimensaoComportamentalEnum.INDEFINIDO.value: "#BDBDBD",
-            
-            # Emoções
-            EmocaoEnum.FELIZ.value: "#FFEB3B",
-            EmocaoEnum.SURPRESO.value: "#00E5FF",
-            EmocaoEnum.MEDO.value: "#7B1FA2",
-            EmocaoEnum.TRISTE.value: "#2196F3",
-            EmocaoEnum.NEUTRO.value: "#9E9E9E",
-            EmocaoEnum.INDEFINIDO.value: "#607D8B",
-            
+            DimensaoComportamentalEnum.CONCENTRADO.value: "#00CC96",        # Verde água
+            DimensaoComportamentalEnum.DISTRAIDO.value: "#FF6692",          # Rosa/vermelho
+            DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO.value: "#B6E880", # Verde limão
+            DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO.value: "#FF9800",   # Laranja escuro
+            DimensaoComportamentalEnum.INDEFINIDO.value: "#BDBDBD",         # Cinza médio
+
+            # Emoções (paleta solicitada)
+            EmocaoEnum.TRISTE.value: "#4a90e2",    # Azul
+            EmocaoEnum.SURPRESO.value: "#f5a623",  # Amarelo/Laranja
+            EmocaoEnum.FELIZ.value: "#7ed321",     # Verde
+            EmocaoEnum.MEDO.value: "#9013fe",      # Roxo
+            EmocaoEnum.NEUTRO.value: "#9b9b9b",    # Cinza
+            EmocaoEnum.INDEFINIDO.value: "#000000", # Preto
+
             # Estado de Fluxo e Fallbacks
             "True": "#00C853",
             "False": "#9E9E9E",
-            "Indefinido": "#607D8B"
+            "Indefinido": "#000000"
         }
 
     def _adicionar_imagens_ao_pdf(self, pdf: FPDF, frames_destaque: List[Dict[str, Any]], tipo: str):
@@ -848,20 +848,46 @@ class RelatorioService:
             df_fluxo_pie = dict_to_df(dados_distribuicao.get('fluxo'))
 
             MAPA_CORES = self._get_color_map()
-            common_marker = dict(symbol='line-ns', size=12, line=dict(width=2), opacity=0.8)
 
-            fig_eng = px.scatter(df_temporal, x="frame_number", y="engajamento", color="engajamento", color_discrete_map=MAPA_CORES, title="Engajamento Temporal")
-            fig_eng.update_traces(marker=common_marker)
+            def _gerar_grafico_barras_temporal(df: pd.DataFrame, coluna_categoria: str, titulo: str) -> go.Figure:
+                """
+                Gera um gráfico de barras temporal onde cada frame é uma barra
+                colorida de acordo com a categoria detectada naquele frame.
+                A legenda mostra todas as categorias presentes com suas cores.
+                """
+                categorias_presentes = df[coluna_categoria].unique()
+                fig = go.Figure()
 
-            fig_comp = px.scatter(df_temporal, x="frame_number", y="comportamento", color="comportamento", color_discrete_map=MAPA_CORES, title="Comportamento Temporal")
-            fig_comp.update_traces(marker=common_marker)
+                for categoria in categorias_presentes:
+                    mascara = df[coluna_categoria] == categoria
+                    cor = MAPA_CORES.get(categoria, "#CCCCCC")
+                    fig.add_trace(go.Bar(
+                        x=df.loc[mascara, "frame_number"],
+                        y=[1] * mascara.sum(),          # altura fixa = 1 (barra sólida)
+                        name=categoria,
+                        marker_color=cor,
+                        hovertemplate=f"Frame: %{{x}}<br>Categoria: {categoria}<extra></extra>",
+                        showlegend=True
+                    ))
 
-            fig_emo = px.scatter(df_temporal, x="frame_number", y="emocao", color="emocao", color_discrete_map=MAPA_CORES, title="Emoção Temporal")
-            fig_emo.update_traces(marker=common_marker)
+                fig.update_layout(
+                    title=titulo,
+                    barmode="stack",
+                    bargap=0,
+                    xaxis_title="Frame",
+                    yaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    template="simple_white",
+                    height=350
+                )
+                return fig
+
+            fig_eng  = _gerar_grafico_barras_temporal(df_temporal, "engajamento",  "Engajamento Temporal")
+            fig_comp = _gerar_grafico_barras_temporal(df_temporal, "comportamento", "Comportamento Temporal")
+            fig_emo  = _gerar_grafico_barras_temporal(df_temporal, "emocao",        "Emoção Temporal")
 
             df_temporal["estado_fluxo_str"] = df_temporal["estado_fluxo"].astype(str)
-            fig_fluxo = px.scatter(df_temporal, x="frame_number", y="estado_fluxo_str", color="estado_fluxo_str", color_discrete_map=MAPA_CORES, title="Fluxo Temporal")
-            fig_fluxo.update_traces(marker=common_marker)
+            fig_fluxo = _gerar_grafico_barras_temporal(df_temporal, "estado_fluxo_str", "Fluxo Temporal")
 
             charts_to_export = [
                 (fig_eng, "temp_spike_eng.png"),

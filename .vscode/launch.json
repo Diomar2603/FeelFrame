@@ -1,6 +1,7 @@
 {
     "version": "0.2.0",
     "configurations": [
+        // 1. O seu Back-end (FastAPI) original
         {
             "name": "FastAPI Debug (venv)",
             "type": "python",
@@ -9,14 +10,33 @@
             "args": [
                 "app.main:app",
                 "--host", "0.0.0.0",
-                "--port", "8000",
+                "--port", "8080",
                 "--reload"
             ],
             "python": "${workspaceFolder}/back-end/venv/Scripts/python.exe",
+            "envFile": "${workspaceFolder}/back-end/app/.env",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/back-end"
+                "PYTHONPATH": "${workspaceFolder}/back-end/app"
             },
+            "cwd": "${workspaceFolder}/back-end",
             "jinja": true
+        },
+        {
+            "name": "Vite Frontend",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "npm run dev",
+            "cwd": "${workspaceFolder}/front-end/app" 
+        }
+    ],
+    // 3. O grupo que une os dois
+    "compounds": [
+        {
+            "name": "Rodar Full Stack (Front + Back)",
+            "configurations": [
+                "FastAPI Debug (venv)",
+                "Vite Frontend"
+            ]
         }
     ]
 }

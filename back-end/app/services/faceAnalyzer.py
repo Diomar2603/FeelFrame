@@ -11,13 +11,16 @@ from app.models.FrameAnalysis import (
 )
 
 DEEPFACE_EMOTION_MAP = {
-    'happy': EmocaoEnum.FELIZ,
-    'sad': EmocaoEnum.TRISTE,
+    'happy':   EmocaoEnum.FELIZ,
+    'sad':     EmocaoEnum.TRISTE,
     'neutral': EmocaoEnum.NEUTRO,
-    'surprise': EmocaoEnum.SURPRESO,
-    'fear': EmocaoEnum.MEDO,
-    'angry': EmocaoEnum.INDEFINIDO,
-    'disgust': EmocaoEnum.INDEFINIDO,
+    'surprise':EmocaoEnum.SURPRESO,
+    'fear':    EmocaoEnum.MEDO,
+    # angry e disgust são mapeados para TRISTE: semanticamente indicam tensão/
+    # desconforto, e o modelo não tem enum próprio para raiva/nojo. Preservar
+    # o dado é melhor que descartar para INDEFINIDO.
+    'angry':   EmocaoEnum.TRISTE,
+    'disgust': EmocaoEnum.TRISTE,
 }
 
 class FaceAnalyzer:
@@ -30,10 +33,11 @@ class FaceAnalyzer:
         self.mp_face_mesh = mp.solutions.face_mesh
         
         self.face_mesh = self.mp_face_mesh.FaceMesh(
+            static_image_mode=True,        # <--- A MÁGICA ACONTECE AQUI
             max_num_faces=max_faces,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+            refine_landmarks=True,       
+            min_detection_confidence=0.1,  # <--- Reduzido ao extremo para aceitar rostos parciais
+            min_tracking_confidence=0.1    
         )
 
         # Modelo 3D para pose
@@ -62,7 +66,8 @@ class FaceAnalyzer:
         # Cache e histórico
         self._detector = None
         self.emotion_history = deque(maxlen=10)
-        self.pose_history = deque(maxlen=5)
+        self.pose_history = deque(maxlen=5)   # cada entrada: (yaw, pitch, roll, proximidade_z)
+        self.gaze_history = deque(maxlen=5)   # cada entrada: (ratio_h, ratio_v)
         
         # Parâmetros
         self.SAD_TO_NEUTRAL_THRESHOLD = 25
@@ -144,20 +149,28 @@ class FaceAnalyzer:
         return regions
 
     def _corrigir_tendencia_tristeza(self, emotion_data, dominant_emotion):
-        if dominant_emotion != 'sad':
+        """
+        Corrige APENAS falsos positivos flagrantes de tristeza — quando o score é
+        muito baixo ou outra emoção positiva é claramente mais forte.
+        Não zera tristeza moderada: isso era a principal causa de perda de dados.
+        """
+        if dominant_emotion not in ('sad', 'angry', 'disgust'):
             return dominant_emotion
-        
-        sad_score = emotion_data.get('sad', 0)
+
+        sad_score    = emotion_data.get('sad', 0) + emotion_data.get('angry', 0) * 0.5 + emotion_data.get('disgust', 0) * 0.5
         neutral_score = emotion_data.get('neutral', 0)
-        happy_score = emotion_data.get('happy', 0)
-        
-        if sad_score < 40: return 'neutral'
-        if sad_score - neutral_score < self.SAD_TO_NEUTRAL_THRESHOLD: return 'neutral'
-        if happy_score > 30 and sad_score - happy_score < 20: return 'happy'
-        if sad_score < 60 and neutral_score > 20: return 'neutral'
-        if sad_score > 70 and sad_score - max(neutral_score, happy_score) > 30: return 'sad'
-        
-        return 'neutral'
+        happy_score  = emotion_data.get('happy', 0)
+
+        # Só corrige se outra emoção positiva domina claramente
+        if happy_score > sad_score + 20:
+            return 'happy'
+
+        # Score combinado negativo muito fraco: provável ruído
+        if sad_score < 20:
+            return 'neutral'
+
+        # Mantém a tristeza — deixa o threshold de confiança decidir no analyze_frame
+        return dominant_emotion
 
     def _verificar_segunda_emocao(self, emotion_data, dominant_emotion):
         """
@@ -177,221 +190,418 @@ class FaceAnalyzer:
         # Pega a segunda colocada
         second_emotion, second_score = sorted_emotions[1]
 
-        # Lista de emoções que valem a pena "resgatar" do neutro
-        emocoes_resgataveis = ['happy', 'surprise', 'fear'] 
-        
-        # Se a segunda emoção for relevante e tiver score decente (> 15%)
+        # Todas as emoções não-neutras valem ser resgatadas se tiverem score suficiente
+        emocoes_resgataveis = ['happy', 'surprise', 'fear', 'sad', 'angry', 'disgust']
+
         if second_emotion in emocoes_resgataveis and second_score > self.SECOND_EMOTION_THRESHOLD:
             return second_emotion
             
         return dominant_emotion
 
     def _analisar_expressao_facial(self, landmarks_list):
+        """
+        Análise geométrica por landmarks como fallback do DeepFace.
+        Detecta: feliz, surpreso, triste, medo, raiva e neutro.
+        """
         try:
-            mouth_left = landmarks_list[61]
-            mouth_right = landmarks_list[291]
-            mouth_top = landmarks_list[13]
+            # Boca
+            mouth_left   = landmarks_list[61]
+            mouth_right  = landmarks_list[291]
+            mouth_top    = landmarks_list[13]
             mouth_bottom = landmarks_list[14]
-            left_eyebrow = landmarks_list[65]
-            right_eyebrow = landmarks_list[295]
-            
-            mouth_width = abs(mouth_right.x - mouth_left.x)
+            # Cantos da boca (para sorriso vs caído)
+            mouth_corner_left  = landmarks_list[57]
+            mouth_corner_right = landmarks_list[287]
+            # Sobrancelhas
+            left_eyebrow_inner  = landmarks_list[65]
+            right_eyebrow_inner = landmarks_list[295]
+            left_eyebrow_outer  = landmarks_list[46]
+            right_eyebrow_outer = landmarks_list[276]
+            # Olhos (abertura)
+            left_eye_top    = landmarks_list[159]
+            left_eye_bottom = landmarks_list[145]
+            right_eye_top   = landmarks_list[386]
+            right_eye_bottom= landmarks_list[374]
+            # Nariz (ponto central para referência vertical)
+            nose_tip = landmarks_list[1]
+
+            mouth_width  = abs(mouth_right.x - mouth_left.x)
             mouth_height = abs(mouth_bottom.y - mouth_top.y)
-            eyebrow_height = (left_eyebrow.y + right_eyebrow.y) / 2
-            
-            smile_ratio = mouth_height / (mouth_width + 1e-6)
-            eyebrow_raise_factor = 0.25 - eyebrow_height 
-            
-            if smile_ratio > 0.18: return "happy", 0.8
-            elif smile_ratio > 0.12: return "happy", 0.6
-            elif eyebrow_raise_factor > 0.15: return "surprise", 0.7
-            else: return "neutral", 0.6
-            
+            mouth_open_ratio = mouth_height / (mouth_width + 1e-6)
+
+            # Cantos da boca: positivo = sorriso, negativo = boca caída
+            mouth_corner_avg_y = (mouth_corner_left.y + mouth_corner_right.y) / 2
+            mouth_center_y     = (mouth_top.y + mouth_bottom.y) / 2
+            mouth_corner_lift  = mouth_center_y - mouth_corner_avg_y  # >0 = sorriso
+
+            # Sobrancelhas: altura relativa ao nariz
+            eyebrow_inner_avg_y = (left_eyebrow_inner.y + right_eyebrow_inner.y) / 2
+            eyebrow_outer_avg_y = (left_eyebrow_outer.y + right_eyebrow_outer.y) / 2
+            eyebrow_raise       = nose_tip.y - eyebrow_inner_avg_y   # >0 = levantadas
+            eyebrow_furrow      = eyebrow_outer_avg_y - eyebrow_inner_avg_y  # >0 = franzidas
+
+            # Abertura dos olhos
+            left_eye_open  = abs(left_eye_bottom.y  - left_eye_top.y)
+            right_eye_open = abs(right_eye_bottom.y - right_eye_top.y)
+            eye_open_avg   = (left_eye_open + right_eye_open) / 2
+
+            # --- Decisão ---
+            # Surpresa: boca aberta + sobrancelhas levantadas + olhos abertos
+            if mouth_open_ratio > 0.22 and eyebrow_raise > 0.20 and eye_open_avg > 0.03:
+                return "surprise", 0.75
+
+            # Feliz: cantos levantados + boca moderadamente aberta
+            if mouth_corner_lift > 0.005 and mouth_open_ratio > 0.08:
+                return "happy", 0.80
+            if mouth_corner_lift > 0.003:
+                return "happy", 0.60
+
+            # Medo: sobrancelhas levantadas + olhos muito abertos + boca entreaberta
+            if eyebrow_raise > 0.18 and eye_open_avg > 0.04 and mouth_open_ratio > 0.10:
+                return "fear", 0.65
+
+            # Raiva/tensão: sobrancelhas franzidas + boca fechada ou comprimida
+            if eyebrow_furrow > 0.015 and mouth_open_ratio < 0.08:
+                return "angry", 0.60
+
+            # Triste: cantos caídos + sobrancelhas levemente franzidas
+            if mouth_corner_lift < -0.003 and eyebrow_raise < 0.14:
+                return "sad", 0.60
+
+            # Neutro: nenhum sinal expressivo claro
+            return "neutral", 0.45
+
         except Exception:
-            return "neutral", 0.5
+            return "neutral", 0.40
 
     def _analyze_emotion_robust(self, frame, landmarks_list, shape):
+        """
+        Analisa a emoção usando o crop facial completo extraído via landmarks do MediaPipe.
+
+        Estratégia:
+          1. Extrai o crop do rosto a partir dos landmarks (já sabemos que o rosto existe).
+          2. Passa o crop para o DeepFace com detector_backend='skip' — assim o DeepFace
+             analisa a imagem diretamente sem tentar (e falhar em) detectar rosto de novo.
+          3. Se o DeepFace falhar, usa análise geométrica por landmarks como fallback.
+
+        Por que 'skip' e não 'opencv'?
+          - Quando recebe um crop sem contexto extra, o detector OpenCV/RetinaFace do DeepFace
+            frequentemente não encontra o rosto e lança exceção, que era silenciada e causava
+            retorno de "neutral" padrão. Com 'skip', o DeepFace confia que o input já é o rosto.
+        """
         try:
-            regions = self._extract_face_regions(frame, landmarks_list, shape)
-            if not regions:
-                return "neutral", 0.6 
+            h, w = shape
+            all_x = [int(lm.x * w) for lm in landmarks_list]
+            all_y = [int(lm.y * h) for lm in landmarks_list]
+            x1 = max(0, min(all_x) - 20)
+            y1 = max(0, min(all_y) - 20)
+            x2 = min(w, max(all_x) + 20)
+            y2 = min(h, max(all_y) + 20)
+            face_crop = frame[y1:y2, x1:x2]
 
-            emotions = []
-            confidences = []
-            region_weights = {'full': 0.5, 'eyes': 0.2, 'mouth': 0.3}
-
-            for region_name, region_img in regions:
-                try:
-                    analysis = DeepFace.analyze(
-                        img_path=region_img,
-                        actions=['emotion'],
-                        enforce_detection=False,
-                        silent=True,
-                        detector_backend='opencv'
-                    )
-                    
-                    if isinstance(analysis, list): analysis = analysis[0]
-
-                    raw_dominant = analysis['dominant_emotion']
-                    emotion_data = analysis['emotion']
-                    
-                    # 1. Tenta resgatar emoção escondida no neutro
-                    dominant_emotion = self._verificar_segunda_emocao(emotion_data, raw_dominant)
-
-                    # 2. Aplica correção agressiva para tristeza (se sobrou tristeza)
-                    dominant_emotion = self._corrigir_tendencia_tristeza(emotion_data, dominant_emotion)
-                    
-                    # Cálculo de confiança
-                    sorted_emotions = sorted(emotion_data.items(), key=lambda x: x[1], reverse=True)
-                    if len(sorted_emotions) >= 2:
-                        confidence = (sorted_emotions[0][1] - sorted_emotions[1][1]) / 100.0
-                    else:
-                        confidence = sorted_emotions[0][1] / 100.0
-                    
-                    weight = region_weights.get(region_name, 0.33)
-                    weighted_confidence = confidence * weight
-                    
-                    min_dim = min(region_img.shape[:2])
-                    if min_dim < 40: weighted_confidence *= 0.5
-                    
-                    emotions.append(dominant_emotion)
-                    confidences.append(weighted_confidence)
-
-                except Exception as e:
-                    continue
-
-            if not emotions:
+            if face_crop.size == 0 or min(face_crop.shape[:2]) < 48:
+                # Crop inválido ou muito pequeno: usa geometria pura
                 return self._analisar_expressao_facial(landmarks_list)
 
-            emotion_scores = {}
-            for emotion, conf in zip(emotions, confidences):
-                emotion_scores[emotion] = emotion_scores.get(emotion, 0) + conf
-            
-            final_emotion = max(emotion_scores.items(), key=lambda x: x[1])[0]
-            
-            avg_confidence = np.mean(confidences) if confidences else 0.0
-            consistency = emotions.count(final_emotion) / len(emotions)
-            final_confidence = avg_confidence * (0.6 + 0.4 * consistency)
-            
-            if final_emotion == 'sad' and final_confidence < self.MAX_SAD_CONFIDENCE:
-                return "neutral", final_confidence * 0.9
+            analysis = DeepFace.analyze(
+                img_path=face_crop,
+                actions=['emotion'],
+                enforce_detection=False,
+                detector_backend='skip',   # crop já é o rosto — pula detecção interna
+                silent=True,
+            )
 
-            return final_emotion, final_confidence
+            if isinstance(analysis, list):
+                analysis = analysis[0]
+
+            raw_dominant = analysis['dominant_emotion']
+            emotion_data = analysis['emotion']
+
+            # Tenta resgatar emoção real quando neutro domina superficialmente
+            dominant_emotion = self._verificar_segunda_emocao(emotion_data, raw_dominant)
+            # Corrige viés de tristeza
+            dominant_emotion = self._corrigir_tendencia_tristeza(emotion_data, dominant_emotion)
+
+            # Confiança = margem entre 1ª e 2ª emoção (mais discriminativa que score absoluto)
+            sorted_emotions = sorted(emotion_data.items(), key=lambda x: x[1], reverse=True)
+            if len(sorted_emotions) >= 2:
+                confidence = (sorted_emotions[0][1] - sorted_emotions[1][1]) / 100.0
+            else:
+                confidence = sorted_emotions[0][1] / 100.0
+
+            # Penaliza crop muito pequeno
+            if min(face_crop.shape[:2]) < 80:
+                confidence *= 0.75
+
+            if dominant_emotion == 'sad' and confidence < self.MAX_SAD_CONFIDENCE:
+                return "neutral", confidence * 0.9
+
+            return dominant_emotion, float(confidence)
 
         except Exception as e:
-            print(f"Erro na análise robusta: {e}")
-            return "neutral", 0.5
+            print(f"Aviso _analyze_emotion_robust: {e}")
+            # Fallback: análise geométrica por landmarks
+            return self._analisar_expressao_facial(landmarks_list)
 
     def _get_emotion(self, frame, landmarks_list, shape):
+        """
+        Obtém a emoção do frame atual, combinando DeepFace com análise geométrica
+        e aplicando suavização temporal leve para reduzir flicker sem suprimir
+        mudanças legítimas de emoção.
+        """
         emotion, confidence = self._analyze_emotion_robust(frame, landmarks_list, shape)
-        
-        if confidence < 0.3:
+
+        # Se DeepFace retornou baixa confiança, tenta complementar com geometria
+        # Threshold reduzido para 0.15: antes de 0.3 descartava resultados válidos
+        if confidence < 0.15:
             emotion_geo, confidence_geo = self._analisar_expressao_facial(landmarks_list)
             if confidence_geo > confidence:
                 emotion, confidence = emotion_geo, confidence_geo
-        
-        self.emotion_history.append(emotion)
-        
+
+        self.emotion_history.append((emotion, confidence))
+
+        # Suavização temporal: usa média ponderada por confiança em vez de voto puro.
+        # Isso evita que um histórico de neutros de baixa confiança suprima uma emoção
+        # clara e recente de alta confiança.
         if len(self.emotion_history) >= 3:
-            emotion_counts = {}
-            for e in self.emotion_history:
-                emotion_counts[e] = emotion_counts.get(e, 0) + 1
-            
-            most_common = max(emotion_counts.items(), key=lambda x: x[1])[0]
-            
-            if emotion != most_common:
-                if emotion == 'sad' and most_common != 'sad':
-                    emotion = most_common
-                    confidence *= 0.8
-                elif most_common == 'neutral':
-                    # Se o histórico é neutro, permite flutuação se a confiança atual for boa
-                    if confidence < 0.6: 
-                        emotion = 'neutral'
-                        confidence = min(1.0, confidence * 1.1)
-        
-        if emotion == 'sad' and confidence < 0.7:
-            emotion = 'neutral'
-            confidence = confidence * 0.9
-        
+            # Acumula score ponderado por emoção
+            weighted_scores: dict = {}
+            for e, c in self.emotion_history:
+                weighted_scores[e] = weighted_scores.get(e, 0.0) + c
+
+            smoothed_emotion = max(weighted_scores.items(), key=lambda x: x[1])[0]
+
+            # Só substitui se a emoção suavizada tiver confiança maior que a atual
+            if smoothed_emotion != emotion:
+                smoothed_conf = weighted_scores[smoothed_emotion] / len(self.emotion_history)
+                if smoothed_conf > confidence * 1.5:  # exige margem de 50% para sobrescrever
+                    emotion = smoothed_emotion
+                    confidence = smoothed_conf
+
+        # Não filtramos mais tristeza aqui — o único filtro fica em analyze_frame
+        # com threshold mínimo (0.05). Dupla filtragem era a causa de perda de dado.
         return emotion, confidence
 
     def _get_head_pose(self, landmarks_list, shape):
         h, w = shape
-        image_points_2d = np.array([self._get_2d_coords(landmarks_list[i], shape) for i in self.pose_landmark_indices], dtype="double")
-        focal_length = w
-        center = (w / 2, h / 2)
-        camera_matrix = np.array([[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]], dtype="double")
-        dist_coeffs = np.zeros((4, 1))
 
-        success, rotation_vector, translation_vector = cv.solvePnP(self.face_3d_model_points, image_points_2d, camera_matrix, dist_coeffs, flags=cv.SOLVEPNP_ITERATIVE)
-        rotation_matrix, _ = cv.Rodrigues(rotation_vector)
-        _, _, _, _, _, _, eulerAngles = cv.decomposeProjectionMatrix(np.hstack((rotation_matrix, translation_vector)))
+        try:
+            image_points_2d = np.array(
+                [self._get_2d_coords(landmarks_list[i], shape) for i in self.pose_landmark_indices],
+                dtype="double"
+            )
+            focal_length = w
+            center = (w / 2, h / 2)
+            camera_matrix = np.array(
+                [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
+                dtype="double"
+            )
+            dist_coeffs = np.zeros((4, 1))
 
-        yaw = eulerAngles[1][0]
-        pitch = eulerAngles[0][0]
-        roll = eulerAngles[2][0]
+            success, rotation_vector, translation_vector = cv.solvePnP(
+                self.face_3d_model_points, image_points_2d,
+                camera_matrix, dist_coeffs,
+                flags=cv.SOLVEPNP_ITERATIVE
+            )
 
-        self.pose_history.append((yaw, pitch, roll))
+            # Se o solvePnP falhou, usa o último valor válido do histórico
+            if not success:
+                return self._pose_from_history()
+
+            rotation_matrix, _ = cv.Rodrigues(rotation_vector)
+            _, _, _, _, _, _, eulerAngles = cv.decomposeProjectionMatrix(
+                np.hstack((rotation_matrix, translation_vector))
+            )
+
+            yaw   = float(eulerAngles[1][0])
+            pitch = float(eulerAngles[0][0])
+            roll  = float(eulerAngles[2][0])
+
+            # Sanidade: ângulos absurdos indicam solução inválida — usa histórico
+            if abs(yaw) > 90 or abs(pitch) > 90:
+                return self._pose_from_history()
+
+            proximidade_z = float(translation_vector[2][0])
+
+        except Exception as e:
+            print(f"Aviso _get_head_pose: {e}")
+            return self._pose_from_history()
+
+        # Suaviza com histórico de poses válidas
+        self.pose_history.append((yaw, pitch, roll, proximidade_z))
         if len(self.pose_history) >= 2:
-            yaw = np.mean([p[0] for p in self.pose_history])
-            pitch = np.mean([p[1] for p in self.pose_history])
-            roll = np.mean([p[2] for p in self.pose_history])
+            yaw          = float(np.mean([p[0] for p in self.pose_history]))
+            pitch        = float(np.mean([p[1] for p in self.pose_history]))
+            roll         = float(np.mean([p[2] for p in self.pose_history]))
+            proximidade_z = float(np.mean([p[3] for p in self.pose_history]))
 
-        # Ajuste de tolerância para evitar "lados" muito facilmente
-        if yaw > 18: pos_h = "Direita"
-        elif yaw < -18: pos_h = "Esquerda"
-        else: pos_h = "Frente"
+        if yaw > 18:        pos_h = "Direita"
+        elif yaw < -18:     pos_h = "Esquerda"
+        else:               pos_h = "Frente"
 
-        if pitch > 12: pos_v = "Baixo"
-        elif pitch < -12: pos_v = "Cima"
-        else: pos_v = "Frente"
-            
-        proximidade_z = translation_vector[2][0]
+        if pitch > 12:      pos_v = "Baixo"
+        elif pitch < -12:   pos_v = "Cima"
+        else:               pos_v = "Frente"
 
-        return {"direcao_horizontal": pos_h, "direcao_vertical": pos_v, "proximidade_z": proximidade_z, 
-                "raw_pitch": pitch, "raw_yaw": yaw, "raw_roll": roll}
+        return {
+            "direcao_horizontal": pos_h,
+            "direcao_vertical": pos_v,
+            "proximidade_z": proximidade_z,
+            "raw_pitch": pitch,
+            "raw_yaw": yaw,
+            "raw_roll": roll,
+        }
+
+    def _pose_from_history(self) -> dict:
+        """
+        Retorna a média do histórico de poses válidas como fallback.
+        Se não há histórico ainda, assume posição frontal (a mais provável).
+        """
+        if self.pose_history:
+            yaw          = float(np.mean([p[0] for p in self.pose_history]))
+            pitch        = float(np.mean([p[1] for p in self.pose_history]))
+            roll         = float(np.mean([p[2] for p in self.pose_history]))
+            proximidade_z = float(np.mean([p[3] for p in self.pose_history]))
+        else:
+            yaw = pitch = roll = proximidade_z = 0.0
+
+        if yaw > 18:        pos_h = "Direita"
+        elif yaw < -18:     pos_h = "Esquerda"
+        else:               pos_h = "Frente"
+
+        if pitch > 12:      pos_v = "Baixo"
+        elif pitch < -12:   pos_v = "Cima"
+        else:               pos_v = "Frente"
+
+        return {
+            "direcao_horizontal": pos_h,
+            "direcao_vertical": pos_v,
+            "proximidade_z": proximidade_z,
+            "raw_pitch": pitch,
+            "raw_yaw": yaw,
+            "raw_roll": roll,
+        }
         
     def _get_gaze_direction(self, landmarks_list, shape):
-        # ... (código inalterado para cálculo de iris) ...
-        # (Mantendo a lógica existente para brevidade, mas você pode usar o código anterior aqui)
         h, w = shape
-        left_iris_coords = [landmarks_list[i] for i in self.IRIS_LEFT_INDICES]
-        left_iris_center_x = np.mean([lm.x for lm in left_iris_coords])
-        left_iris_center_y = np.mean([lm.y for lm in left_iris_coords])
-        
-        eye_left_outer_x = landmarks_list[self.EYE_LEFT_OUTER].x
-        eye_left_inner_x = landmarks_list[self.EYE_LEFT_INNER].x
-        eye_left_top_y = landmarks_list[self.EYE_LEFT_TOP].y
-        eye_left_bottom_y = landmarks_list[self.EYE_LEFT_BOTTOM].y
 
-        right_iris_coords = [landmarks_list[i] for i in self.IRIS_RIGHT_INDICES]
-        right_iris_center_x = np.mean([lm.x for lm in right_iris_coords])
-        right_iris_center_y = np.mean([lm.y for lm in right_iris_coords])
-        
-        eye_right_outer_x = landmarks_list[self.EYE_RIGHT_OUTER].x
-        eye_right_inner_x = landmarks_list[self.EYE_RIGHT_INNER].x
-        eye_right_top_y = landmarks_list[self.EYE_RIGHT_TOP].y
-        eye_right_bottom_y = landmarks_list[self.EYE_RIGHT_BOTTOM].y
+        try:
+            total_landmarks = len(landmarks_list)
 
-        epsilon = 1e-6
-        ratio_h_left = (left_iris_center_x - eye_left_outer_x) / (eye_left_inner_x - eye_left_outer_x + epsilon)
-        ratio_h_right = (right_iris_center_x - eye_right_outer_x) / (eye_right_inner_x - eye_right_outer_x + epsilon)
-        ratio_h_avg = (ratio_h_left + ratio_h_right) / 2.0
+            # Índices de íris (469-477) só existem com refine_landmarks=True.
+            # Se o MediaPipe não os forneceu, cai no fallback geométrico.
+            iris_indices_needed = self.IRIS_LEFT_INDICES + self.IRIS_RIGHT_INDICES
+            if total_landmarks <= max(iris_indices_needed):
+                return self._gaze_from_history()
 
-        ratio_v_left = (left_iris_center_y - eye_left_top_y) / (eye_left_bottom_y - eye_left_top_y + epsilon)
-        ratio_v_right = (right_iris_center_y - eye_right_top_y) / (eye_right_bottom_y - eye_right_top_y + epsilon)
-        ratio_v_avg = (ratio_v_left + ratio_v_right) / 2.0
-        
-        if ratio_h_avg > 0.65: gaze_h = "Direita"
+            left_iris_coords  = [landmarks_list[i] for i in self.IRIS_LEFT_INDICES]
+            right_iris_coords = [landmarks_list[i] for i in self.IRIS_RIGHT_INDICES]
+
+            left_iris_center_x  = float(np.mean([lm.x for lm in left_iris_coords]))
+            left_iris_center_y  = float(np.mean([lm.y for lm in left_iris_coords]))
+            right_iris_center_x = float(np.mean([lm.x for lm in right_iris_coords]))
+            right_iris_center_y = float(np.mean([lm.y for lm in right_iris_coords]))
+
+            eye_left_outer_x  = landmarks_list[self.EYE_LEFT_OUTER].x
+            eye_left_inner_x  = landmarks_list[self.EYE_LEFT_INNER].x
+            eye_left_top_y    = landmarks_list[self.EYE_LEFT_TOP].y
+            eye_left_bottom_y = landmarks_list[self.EYE_LEFT_BOTTOM].y
+
+            eye_right_outer_x  = landmarks_list[self.EYE_RIGHT_OUTER].x
+            eye_right_inner_x  = landmarks_list[self.EYE_RIGHT_INNER].x
+            eye_right_top_y    = landmarks_list[self.EYE_RIGHT_TOP].y
+            eye_right_bottom_y = landmarks_list[self.EYE_RIGHT_BOTTOM].y
+
+            epsilon = 1e-6
+
+            # Sanidade: se a abertura do olho for quase zero (olho fechado/ocluído),
+            # o ratio fica instável — descarta esse olho individualmente
+            left_eye_width  = abs(eye_left_inner_x  - eye_left_outer_x)
+            right_eye_width = abs(eye_right_inner_x - eye_right_outer_x)
+            left_eye_height  = abs(eye_left_bottom_y  - eye_left_top_y)
+            right_eye_height = abs(eye_right_bottom_y - eye_right_top_y)
+
+            ratios_h = []
+            ratios_v = []
+
+            if left_eye_width > 0.01:
+                ratios_h.append(
+                    (left_iris_center_x - eye_left_outer_x) / (eye_left_inner_x - eye_left_outer_x + epsilon)
+                )
+            if right_eye_width > 0.01:
+                ratios_h.append(
+                    (right_iris_center_x - eye_right_outer_x) / (eye_right_inner_x - eye_right_outer_x + epsilon)
+                )
+            if left_eye_height > 0.005:
+                ratios_v.append(
+                    (left_iris_center_y - eye_left_top_y) / (eye_left_bottom_y - eye_left_top_y + epsilon)
+                )
+            if right_eye_height > 0.005:
+                ratios_v.append(
+                    (right_iris_center_y - eye_right_top_y) / (eye_right_bottom_y - eye_right_top_y + epsilon)
+                )
+
+            # Se nenhum olho ficou confiável, usa histórico
+            if not ratios_h and not ratios_v:
+                return self._gaze_from_history()
+
+            ratio_h_avg = float(np.mean(ratios_h)) if ratios_h else 0.5
+            ratio_v_avg = float(np.mean(ratios_v)) if ratios_v else 0.5
+
+            # Clamp para evitar valores fora de [0,1] por oclusão parcial
+            ratio_h_avg = max(0.0, min(1.0, ratio_h_avg))
+            ratio_v_avg = max(0.0, min(1.0, ratio_v_avg))
+
+        except Exception as e:
+            print(f"Aviso _get_gaze_direction: {e}")
+            return self._gaze_from_history()
+
+        # Salva no histórico de olhar
+        self.gaze_history.append((ratio_h_avg, ratio_v_avg))
+        if len(self.gaze_history) >= 2:
+            ratio_h_avg = float(np.mean([g[0] for g in self.gaze_history]))
+            ratio_v_avg = float(np.mean([g[1] for g in self.gaze_history]))
+
+        if ratio_h_avg > 0.65:   gaze_h = "Direita"
         elif ratio_h_avg < 0.35: gaze_h = "Esquerda"
-        else: gaze_h = "Frente"
+        else:                    gaze_h = "Frente"
 
-        if ratio_v_avg > 0.60: gaze_v = "Baixo"
+        if ratio_v_avg > 0.60:   gaze_v = "Baixo"
         elif ratio_v_avg < 0.40: gaze_v = "Cima"
-        else: gaze_v = "Frente"
-            
-        return {"direcao_horizontal": gaze_h, "direcao_vertical": gaze_v, 
-                "raw_ratio_h": ratio_h_avg, "raw_ratio_v": ratio_v_avg}
+        else:                    gaze_v = "Frente"
+
+        return {
+            "direcao_horizontal": gaze_h,
+            "direcao_vertical": gaze_v,
+            "raw_ratio_h": ratio_h_avg,
+            "raw_ratio_v": ratio_v_avg,
+        }
+
+    def _gaze_from_history(self) -> dict:
+        """
+        Retorna a média do histórico de olhar como fallback.
+        Se não há histórico, assume olhar para frente.
+        """
+        if self.gaze_history:
+            ratio_h_avg = float(np.mean([g[0] for g in self.gaze_history]))
+            ratio_v_avg = float(np.mean([g[1] for g in self.gaze_history]))
+        else:
+            ratio_h_avg = ratio_v_avg = 0.5  # centro = "Frente"
+
+        if ratio_h_avg > 0.65:   gaze_h = "Direita"
+        elif ratio_h_avg < 0.35: gaze_h = "Esquerda"
+        else:                    gaze_h = "Frente"
+
+        if ratio_v_avg > 0.60:   gaze_v = "Baixo"
+        elif ratio_v_avg < 0.40: gaze_v = "Cima"
+        else:                    gaze_v = "Frente"
+
+        return {
+            "direcao_horizontal": gaze_h,
+            "direcao_vertical": gaze_v,
+            "raw_ratio_h": ratio_h_avg,
+            "raw_ratio_v": ratio_v_avg,
+        }
 
     def _get_eye_aspect_ratio(self, landmarks_list):
         v_dist_left = abs(landmarks_list[self.EYE_LEFT_BOTTOM].y - landmarks_list[self.EYE_LEFT_TOP].y)
@@ -410,8 +620,15 @@ class FaceAnalyzer:
         return PoseCabecaEnum.FRENTE 
 
     def _determinar_olhar_enum(self, gaze_obj):
-        if gaze_obj.direcao_horizontal == "Frente": return OlharDirecaoEnum.FRENTE
-        else: return OlharDirecaoEnum.LADOS
+        """
+        Classifica o olhar considerando horizontal E vertical.
+        Olhar para baixo/cima conta como FRENTE (foco na tarefa ou leitura),
+        não como LADOS (distração). Só olhar lateralmente é distração.
+        """
+        if gaze_obj.direcao_horizontal != "Frente":
+            return OlharDirecaoEnum.LADOS
+        # Horizontal = Frente (independente de cima/baixo = foco na tarefa)
+        return OlharDirecaoEnum.FRENTE
 
     def _detectar_estado_fluxo(self, emocao, dimensao, confidence, pose, olhar):
         concentrado = dimensao in [DimensaoComportamentalEnum.CONCENTRADO, DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO]
@@ -439,52 +656,54 @@ class FaceAnalyzer:
             
         return True
 
-    def _calcular_dimensao_comportamental(self, pose: PoseCabecaEnum, olhar: OlharDirecaoEnum, olhos_fechados: bool) -> DimensaoComportamentalEnum:
+    def _calcular_dimensao_comportamental(
+        self,
+        pose: PoseCabecaEnum,
+        olhar: OlharDirecaoEnum,
+        olhos_fechados: bool,
+        ear: float = 0.25,
+    ) -> DimensaoComportamentalEnum:
         """
-        Lógica ajustada para EVITAR 'INDEFINIDO' puro.
-        Prioriza INDEFINIDO_CONCENTRADO ou INDEFINIDO_DISTRAIDO.
+        Calcula a dimensão comportamental usando pose, olhar E abertura dos olhos (EAR).
+
+        Gradiente de atenção:
+          EAR < 0.15               → olhos fechados         → DISTRAIDO
+          0.15 ≤ EAR < 0.20       → olhos semicerrados      → INDEFINIDO_DISTRAIDO
+          EAR ≥ 0.20 + pose/olhar → análise combinada normal
         """
-        
-        # Caso 1: Olhos Fechados = Distração quase certa (sono/tédio)
-        if olhos_fechados:
+        # Olhos completamente fechados: distração/sono
+        if olhos_fechados or ear < 0.15:
             return DimensaoComportamentalEnum.DISTRAIDO
 
-        # Caso 2: Olhando para baixo (leitura/anotação)
-        if pose == PoseCabecaEnum.BAIXO:
-            if olhar == OlharDirecaoEnum.FRENTE or olhar == OlharDirecaoEnum.INDEFINIDO:
-                return DimensaoComportamentalEnum.CONCENTRADO
-            else:
-                return DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO # Assume trabalho na mesa
+        # Olhos semicerrados: atenção reduzida — degrada um nível abaixo do normal
+        semicerrado = ear < 0.20
 
-        # Caso 3: Olhando para os lados
+        # Cabeça olhando para baixo (leitura, anotação, celular)
+        if pose == PoseCabecaEnum.BAIXO:
+            if olhar == OlharDirecaoEnum.FRENTE:
+                return DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO if semicerrado else DimensaoComportamentalEnum.CONCENTRADO
+            else:
+                return DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO if semicerrado else DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO
+
+        # Cabeça virada para o lado
         elif pose == PoseCabecaEnum.LADOS:
             if olhar == OlharDirecaoEnum.LADOS:
                 return DimensaoComportamentalEnum.DISTRAIDO
-            elif olhar == OlharDirecaoEnum.FRENTE:
-                # Cabeça virada mas olho na tela = Atenção parcial
-                return DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO
             else:
-                return DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO
+                # Cabeça virada mas olhos na frente = atenção parcial
+                return DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO if semicerrado else DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO
 
-        # Caso 4: Cabeça de Frente
+        # Cabeça de frente (caso mais comum)
         elif pose == PoseCabecaEnum.FRENTE:
             if olhar == OlharDirecaoEnum.FRENTE:
-                return DimensaoComportamentalEnum.CONCENTRADO
-            elif olhar == OlharDirecaoEnum.LADOS:
-                return DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO
+                return DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO if semicerrado else DimensaoComportamentalEnum.CONCENTRADO
             else:
-                # Se pose é frente mas olhar falhou, assume concentrado
-                return DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO
-        
-        # FALLBACK FINAL ROBUSTO:
-        # Se chegou aqui (pose indefinida), tenta salvar baseado no olhar
+                return DimensaoComportamentalEnum.DISTRAIDO if semicerrado else DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO
+
+        # Fallback: usa apenas o olhar
         if olhar == OlharDirecaoEnum.FRENTE:
             return DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO
-        elif olhar == OlharDirecaoEnum.LADOS:
-            return DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO
-        
-        # Se tudo falhar, assume concentrado "leve" em vez de nulo
-        return DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO
+        return DimensaoComportamentalEnum.INDEFINIDO_DISTRAIDO
 
     def _get_emotion_score(self, emocao: EmocaoEnum, confidence: float) -> float:
         base_scores = {
@@ -521,27 +740,48 @@ class FaceAnalyzer:
         shape_2d = (h, w)
         frame_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         results = self.face_mesh.process(frame_rgb)
-
         if results.multi_face_landmarks:
             face_landmarks = results.multi_face_landmarks[0]
             landmarks_list = face_landmarks.landmark
 
-            raw_emotion_str, emotion_confidence = self._get_emotion(frame, landmarks_list, shape_2d)
-            raw_pose_dict = self._get_head_pose(landmarks_list, shape_2d)
-            raw_gaze_dict = self._get_gaze_direction(landmarks_list, shape_2d)
-            avg_ear = self._get_eye_aspect_ratio(landmarks_list)
-            olhos_fechados = avg_ear < self.OLHOS_FECHADOS_THRESHOLD
-            
-            if emotion_confidence > 0.2:
+            # Cada extração é isolada: falha em uma não contamina as outras
+            try:
+                raw_emotion_str, emotion_confidence = self._get_emotion(frame, landmarks_list, shape_2d)
+            except Exception as e:
+                print(f"Aviso _get_emotion frame {frame_number}: {e}")
+                raw_emotion_str, emotion_confidence = "neutral", 0.5
+
+            try:
+                raw_pose_dict = self._get_head_pose(landmarks_list, shape_2d)
+            except Exception as e:
+                print(f"Aviso _get_head_pose frame {frame_number}: {e}")
+                raw_pose_dict = self._pose_from_history()
+
+            try:
+                raw_gaze_dict = self._get_gaze_direction(landmarks_list, shape_2d)
+            except Exception as e:
+                print(f"Aviso _get_gaze_direction frame {frame_number}: {e}")
+                raw_gaze_dict = self._gaze_from_history()
+
+            try:
+                avg_ear = self._get_eye_aspect_ratio(landmarks_list)
+                olhos_fechados = avg_ear < self.OLHOS_FECHADOS_THRESHOLD
+            except Exception:
+                avg_ear = 0.25
+                olhos_fechados = False
+
+            # Threshold reduzido: 0.2 descartava emoções sutis mas reais.
+            # Agora aceita qualquer resultado com confiança mínima > 0.08.
+            if emotion_confidence > 0.08:
                 emocao_enum = DEEPFACE_EMOTION_MAP.get(raw_emotion_str, EmocaoEnum.NEUTRO)
             else:
-                emocao_enum = EmocaoEnum.NEUTRO
+                emocao_enum = EmocaoEnum.INDEFINIDO
 
-            # Verifica e ajusta tristeza final
-            if emocao_enum == EmocaoEnum.TRISTE:
-                if emotion_confidence < 0.7:
-                    emocao_enum = EmocaoEnum.NEUTRO
-                    emotion_confidence = emotion_confidence * 0.9
+            # Tristeza só é descartada se a confiança for muito baixa (ruído puro).
+            # O filtro agressivo anterior (0.55) era duplicado com _get_emotion e
+            # eliminava tristeza/raiva legítima. Apenas confiança quase zero é descartada.
+            if emocao_enum == EmocaoEnum.TRISTE and emotion_confidence < 0.05:
+                emocao_enum = EmocaoEnum.NEUTRO
 
             pose_obj = HeadPose(
                 direcao_horizontal=raw_pose_dict['direcao_horizontal'],
@@ -551,7 +791,7 @@ class FaceAnalyzer:
                 proximidade_z=raw_pose_dict['proximidade_z'],
                 raw_roll=raw_pose_dict['raw_roll']
             )
-            
+
             gaze_obj = GazeDirection(
                 direcao_horizontal=raw_gaze_dict['direcao_horizontal'],
                 raw_ratio_h=raw_gaze_dict['raw_ratio_h'],
@@ -559,16 +799,13 @@ class FaceAnalyzer:
                 raw_ratio_v=raw_gaze_dict['raw_ratio_v']
             )
 
-            pose_enum = self._determinar_pose_enum(pose_obj)
-            olhar_enum = self._determinar_olhar_enum(gaze_obj)
+            pose_enum    = self._determinar_pose_enum(pose_obj)
+            olhar_enum   = self._determinar_olhar_enum(gaze_obj)
+            dimensao_enum = self._calcular_dimensao_comportamental(pose_enum, olhar_enum, olhos_fechados, avg_ear)
 
-            # Aqui está a mágica da dimensão comportamental sem Indefinido puro
-            dimensao_enum = self._calcular_dimensao_comportamental(pose_enum, olhar_enum, olhos_fechados)
-            
             estado_fluxo = self._detectar_estado_fluxo(
                 emocao_enum, dimensao_enum, emotion_confidence, pose_obj, gaze_obj
             )
-
             estimativa_enum = self._calcular_estimativa_engajamento(
                 dimensao_enum, emocao_enum, emotion_confidence, estado_fluxo
             )
@@ -579,16 +816,86 @@ class FaceAnalyzer:
                 dimensao_comportamental=dimensao_enum, estimativa_engajamento=estimativa_enum,
                 emotion_confidence=emotion_confidence, estado_fluxo=estado_fluxo
             )
-        
-        else:
-            # Fallback para quando não acha rosto (aqui mantemos indefinido puro pois não há dados)
-            default_pose = HeadPose("Indefinido", 0.0, "Indefinido", 0.0, 0.0, 0.0)
-            default_gaze = GazeDirection("Indefinido", 0.0, "Indefinido", 0.0)
 
+        else:
+            # Rosto não detectado pelo FaceMesh: usa histórico se disponível,
+            # evitando gravar zeros onde havia dados confiáveis nos frames anteriores
+            pose_dict = self._pose_from_history()
+            gaze_dict = self._gaze_from_history()
+
+            pose_obj = HeadPose(
+                direcao_horizontal=pose_dict['direcao_horizontal'],
+                raw_yaw=pose_dict['raw_yaw'],
+                direcao_vertical=pose_dict['direcao_vertical'],
+                raw_pitch=pose_dict['raw_pitch'],
+                proximidade_z=pose_dict['proximidade_z'],
+                raw_roll=pose_dict['raw_roll']
+            )
+            gaze_obj = GazeDirection(
+                direcao_horizontal=gaze_dict['direcao_horizontal'],
+                raw_ratio_h=gaze_dict['raw_ratio_h'],
+                direcao_vertical=gaze_dict['direcao_vertical'],
+                raw_ratio_v=gaze_dict['raw_ratio_v']
+            )
+
+            # Se há histórico, mantém o engajamento anterior (indefinido só na primeira vez)
+            if self.pose_history or self.gaze_history:
+                pose_enum    = self._determinar_pose_enum(pose_obj)
+                olhar_enum   = self._determinar_olhar_enum(gaze_obj)
+                dimensao_enum = self._calcular_dimensao_comportamental(pose_enum, olhar_enum, False)
+                estimativa_enum = self._calcular_estimativa_engajamento(
+                    dimensao_enum, EmocaoEnum.INDEFINIDO, 0.0
+                )
+            else:
+                dimensao_enum   = DimensaoComportamentalEnum.INDEFINIDO
+                estimativa_enum = EstimativaEngajamentoEnum.INDEFINIDO
+
+            # Rosto não detectado pelo FaceMesh: emoção é INDEFINIDO (não NEUTRO),
+            # pois não temos informação — neutro implicaria expressão detectada.
             return FrameAnalysis(
                 video_id=video_id, timestamp_ms=timestamp_ms, frame_number=frame_number,
-                emocao=EmocaoEnum.NEUTRO.value, pose_cabeca=default_pose, olhar=default_gaze,
-                dimensao_comportamental=DimensaoComportamentalEnum.INDEFINIDO,
-                estimativa_engajamento=EstimativaEngajamentoEnum.INDEFINIDO,
+                emocao=EmocaoEnum.INDEFINIDO.value, pose_cabeca=pose_obj, olhar=gaze_obj,
+                dimensao_comportamental=dimensao_enum, estimativa_engajamento=estimativa_enum,
                 emotion_confidence=0.0, estado_fluxo=False
             )
+
+    def analyze(self, frame, video_id: str, timestamp_ms: int, frame_number: int) -> FrameAnalysis:
+        """
+        Alias de analyze_frame com a assinatura esperada pelo VideoService.
+        VideoService chama: self.face_analyzer.analyze(frame, video_id, timestamp_ms, frame_number)
+        """
+        return self.analyze_frame(
+            frame=frame,
+            timestamp_ms=timestamp_ms,
+            video_id=video_id,
+            frame_number=frame_number,
+        )
+
+    def detect_face_rect(self, frame) -> tuple | None:
+        """
+        Detecta o rosto no frame usando YuNet e retorna o retângulo (x, y, w, h)
+        para ser usado como quadro fixo de recorte no VideoService.
+
+        Retorna None se nenhum rosto for detectado com confiança suficiente.
+        """
+        faces = self.detect_faces(frame)
+
+        if len(faces) == 0:
+            return None
+
+        # Pega o rosto com maior score de confiança
+        best_face = max(faces, key=lambda f: f[14])  # coluna 14 = score do YuNet
+
+        x, y, w, h = int(best_face[0]), int(best_face[1]), int(best_face[2]), int(best_face[3])
+
+        # Valida que o retângulo está dentro dos limites do frame
+        frame_h, frame_w = frame.shape[:2]
+        x = max(0, x)
+        y = max(0, y)
+        w = min(w, frame_w - x)
+        h = min(h, frame_h - y)
+
+        if w <= 0 or h <= 0:
+            return None
+
+        return (x, y, w, h)

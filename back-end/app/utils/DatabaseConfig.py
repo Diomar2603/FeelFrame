@@ -16,7 +16,7 @@ class DatabaseConfig:
         
         # 2. Lê as variáveis do ambiente, com valores padrão por segurança
         self.mongo_uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
-        self.db_name = os.environ.get("DB_NAME", "video_analysis_db")
+        self.db_name = os.environ.get("DB_NAME", "video_analysis_db_teste")
         
         self.client: MongoClient = None
         self.db: Database = None
