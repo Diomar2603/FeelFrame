@@ -310,7 +310,7 @@ async def processing_progress(video_id: str):
 _NEUTRO_THRESHOLD_MS = 100  # frames abaixo deste timestamp são forçados a Neutro/Indefinido
 
 
-def _build_timeline_blocks(frames: list, field: str, default_below_threshold: str) -> list:
+async def _build_timeline_blocks(frames: list, field: str, default_below_threshold: str) -> list:
     """
     Recebe os documentos de frame_analysis ordenados por timestamp_ms e
     agrupa frames consecutivos com o mesmo valor de `field` em blocos

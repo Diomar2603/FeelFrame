@@ -29,7 +29,7 @@ except Exception as e:
     # (video_service_instance permanece None)
 
 # --- Função de Limpeza ---
-def _cleanup_file(path: str):
+async def _cleanup_file(path: str):
     """Função de background para remover o arquivo após o envio."""
     try:
         if os.path.exists(path):
@@ -43,7 +43,7 @@ def _cleanup_file(path: str):
     response_class=FileResponse, # Informa ao FastAPI que a resposta é um arquivo
     summary="Gera e baixa um relatório em PDF para um vídeo"
 )
-def gerar_relatorio_por_video(
+async def gerar_relatorio_por_video(
     video_id: str, 
     background_tasks: BackgroundTasks
 ):
