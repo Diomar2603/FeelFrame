@@ -3,6 +3,9 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
+from app.models.StorageSource import StorageSource
+
+
 @dataclass
 class VideoMetadata:
     """
@@ -42,11 +45,16 @@ class VideoMetadata:
 
     fixed_crop_rect_in_source: Optional[str] = None
 
+    # Identifica onde os arquivos de mídia estão armazenados.
+    # Usado para selecionar o provider correto na recuperação.
+    storage_source: StorageSource = StorageSource.FIREBASE
+
     def to_dict(self) -> Dict[str, Any]:
         """Converte a instância em dicionário pronto para o MongoDB."""
         data = asdict(self)
         data['created_at'] = self.created_at.isoformat()
         data['updated_at'] = self.updated_at.isoformat()
+        data['storage_source'] = self.storage_source.value
         return data
 
     def mark_as_updated(self):

@@ -10,7 +10,9 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from dotenv import load_dotenv
 
 from app.services.videoService import VideoService
-from app.services.firebaseStorageService import FirebaseStorageService
+from app.services.interfaces.IStorageService import IStorageService
+from app.services.storageFactory import create_storage_service
+from app.models.StorageSource import StorageSource
 from app.utils.DatabaseConfig import DatabaseConfig
 
 # ---------------------------------------------------------------------------
@@ -27,7 +29,7 @@ load_dotenv()
 
 video_service_instance: VideoService | None = None
 db_config_instance: DatabaseConfig | None = None
-cloudinary_instance: FirebaseStorageService | None = None
+cloudinary_instance: IStorageService | None = None
 
 try:
     upload_subfolder = os.environ.get("VIDEO_UPLOAD_SUBFOLDER", "VideosFeelFrame")
@@ -39,8 +41,12 @@ try:
         print(f"Diretório de upload criado: {VIDEO_UPLOAD_DIRECTORY}")
 
     db_config_instance = DatabaseConfig()
-    video_service_instance = VideoService(filePath=VIDEO_UPLOAD_DIRECTORY, db_config=db_config_instance)
-    cloudinary_instance = FirebaseStorageService()
+    cloudinary_instance = create_storage_service()
+    video_service_instance = VideoService(
+        filePath=VIDEO_UPLOAD_DIRECTORY,
+        db_config=db_config_instance,
+        storage=cloudinary_instance,
+    )
 
     print(f"Serviços inicializados. DB: '{db_config_instance.db_name}', Caminho: '{VIDEO_UPLOAD_DIRECTORY}'")
 
@@ -73,6 +79,7 @@ async def _register_pending_video(filename: str) -> str:
         "_id": video_id,
         "original_filename": filename,
         "status": "pending",
+        "storage_source": cloudinary_instance.source.value if cloudinary_instance else StorageSource.FIREBASE.value,
         "progress_percent": 0,
         "processing_message": "Aguardando início do processamento...",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -390,7 +397,8 @@ async def get_video_data(video_id: str):
 
     video_doc = db["videos"].find_one(
         {"_id": video_id},
-        {"status": 1, "original_url": 1, "processed_url": 1, "error_message": 1},
+        {"status": 1, "original_url": 1, "processed_url": 1,
+         "error_message": 1, "storage_source": 1},
     )
 
     if video_doc is None:
@@ -410,6 +418,7 @@ async def get_video_data(video_id: str):
             content={
                 "video_id": video_id,
                 "status": status,
+                "storage_source": video_doc.get("storage_source", StorageSource.FIREBASE.value),
                 "message": "Video ainda em processamento. Tente novamente em instantes.",
                 "original_url": video_doc.get("original_url"),
                 "processed_url": None,
@@ -434,17 +443,17 @@ async def get_video_data(video_id: str):
     )
 
     analysis = {
-        "emocao": _build_timeline_blocks(
+        "emocao": await _build_timeline_blocks(
             frames,
             field="emocao",
             default_below_threshold="Neutro",
         ),
-        "dimensao_comportamental": _build_timeline_blocks(
+        "dimensao_comportamental": await _build_timeline_blocks(
             frames,
             field="dimensao_comportamental",
             default_below_threshold="Indefinido",
         ),
-        "estimativa_engajamento": _build_timeline_blocks(
+        "estimativa_engajamento": await _build_timeline_blocks(
             frames,
             field="estimativa_engajamento",
             default_below_threshold="Indefinido",
@@ -454,6 +463,7 @@ async def get_video_data(video_id: str):
     return {
         "video_id": video_id,
         "status": "success",
+        "storage_source": video_doc.get("storage_source", StorageSource.FIREBASE.value),
         "original_url": video_doc.get("original_url"),
         "processed_url": video_doc.get("processed_url"),
         "analysis": analysis,

@@ -7,12 +7,21 @@ from enum import Enum
 
 class PoseCabecaEnum(str, Enum):
     FRENTE = "FRENTE"
+    ESQUERDA = "ESQUERDA"
+    DIREITA = "DIREITA"
+    CENTRO = "CENTRO"
+    CIMA = "CIMA"
     LADOS = "LADOS"
     BAIXO = "BAIXO"
     INDEFINIDO = "INDEFINIDO"
 
 class OlharDirecaoEnum(str, Enum):
     FRENTE = "FRENTE"
+    ESQUERDA = "ESQUERDA"
+    DIREITA = "DIREITA"
+    CENTRO = "CENTRO"
+    CIMA = "CIMA"
+    BAIXO = "BAIXO"
     LADOS = "LADOS"
     INDEFINIDO = "INDEFINIDO"
 
