@@ -1,0 +1,205 @@
+\documentclass[
+	12pt,
+	openright,
+	oneside, % Mude para twoside se for imprimir frente e verso
+	a4paper,
+	english,
+	brazil
+	]{abntex2}
+
+% ---
+% PACOTES BÁSICOS
+% ---
+\usepackage{lmodern}			% Usa a fonte Latin Modern
+\usepackage[T1]{fontenc}		% Selecao de codigos de fonte.
+\usepackage[utf8]{inputenc}		% Codificacao do documento
+\usepackage{indentfirst}		% Indenta o primeiro parágrafo de cada seção.
+\usepackage{color}				% Controle das cores
+\usepackage{graphicx}			% Inclusão de gráficos
+\usepackage{microtype} 			% para melhorias de justificação
+\usepackage{amsmath}
+
+% ---
+% INFORMAÇÕES DO TRABALHO
+% ---
+\titulo{TITULO DO SEU TRABALHO: \\ Subtítulo (se houver)}
+\autor{SEU NOME COMPLETO}
+\local{SANTO ANDRÉ}
+\data{\the\year}
+\orientador{Nome do seu Orientador}
+\instituicao{%
+  UNIVERSIDADE FEDERAL DO ABC
+  \par
+  CMCC - CENTRO DE MATEMÁTICA, COMPUTAÇÃO E COGNIÇÃO
+  \par
+  BACHARELADO EM CIÊNCIA DA COMPUTAÇÃO}
+\tipotrabalho{Projeto de Graduação em Computação}
+\preambulo{Projeto de Graduação em Computação apresentado ao Bacharelado em Ciência da Computação da Universidade Federal do ABC, como requisito parcial para a obtenção do título de Bacharel.}
+
+% ---
+% CONFIGURAÇÕES DE APARÊNCIA
+% ---
+\definecolor{blue}{RGB}{41,5,195}
+\hypersetup{
+	pdftitle={\@title}, 
+	pdfauthor={\@author},
+    pdfsubject={\imprimirpreambulo},
+	colorlinks=true,
+	linkcolor=black,
+	citecolor=black,
+	urlcolor=black
+}
+
+% Altera a capa para incluir o logo
+\renewcommand{\imprimircapa}{%
+  \begin{capa}%
+    \center
+    % AQUI ENTRA O LOGO DA UFABC
+    \includegraphics[width=4cm]{Ufabc_logo.png} \\ % Lembre-se de fazer o upload da imagem
+    \vspace{0.5cm}
+    {\ABNTEXchapterfont\large\imprimirinstituicao}
+    
+    \vspace*{\fill}
+    
+    {\ABNTEXchapterfont\large\imprimirautor}
+    
+    \vspace*{\fill}
+    {\ABNTEXchapterfont\bfseries\LARGE\imprimirtitulo}
+    \vspace*{\fill}
+    
+    {\large\imprimirlocal}
+    \par
+    {\large\imprimirdata}
+    \vspace*{1cm}
+  \end{capa}
+}
+
+% ---
+% INÍCIO DO DOCUMENTO
+% ---
+\begin{document}
+
+\selectlanguage{brazil}
+\frenchspacing 
+
+% ----------------------------------------------------------
+% ELEMENTOS PRÉ-TEXTUAIS
+% ----------------------------------------------------------
+\imprimircapa
+\imprimirfolhaderosto
+
+% --- Dedicatória ---
+\begin{dedicatoria}
+   \vspace*{\fill}
+   \centering
+   \noindent
+   \textit{ Dedico este trabalho à...} \vspace*{\fill}
+\end{dedicatoria}
+
+% --- Agradecimentos ---
+\begin{agradecimentos}
+Agradeço a...
+\end{agradecimentos}
+
+% --- Epígrafe ---
+\begin{epigrafe}
+    \vspace*{\fill}
+	\begin{flushright}
+		\textit{``Escreva sua citação favorita aqui.'' \\
+		(Autor da Citação)}
+	\end{flushright}
+\end{epigrafe}
+
+% --- Resumo ---
+\begin{resumo}
+Escreva aqui o seu resumo na língua vernácula.
+
+\textbf{Palavras-chave}: Palavra 1. Palavra 2. Palavra 3.
+\end{resumo}
+
+% --- Abstract ---
+\begin{resumo}[Abstract]
+\begin{otherlanguage*}{english}
+Write your abstract here.
+
+\vspace{\onelineskip}
+\noindent 
+\textbf{Keywords}: Keyword 1. Keyword 2. Keyword 3.
+\end{otherlanguage*}
+\end{resumo}
+
+% --- Listas ---
+\pdfbookmark[0]{\listfigurename}{lof}
+\listoffigures*
+\cleardoublepage
+
+\pdfbookmark[0]{\listtablename}{lot}
+\listoftables*
+\cleardoublepage
+
+% --- Sumário ---
+\pdfbookmark[0]{\contentsname}{toc}
+\tableofcontents*
+\cleardoublepage
+
+% ----------------------------------------------------------
+% ELEMENTOS TEXTUAIS
+% ----------------------------------------------------------
+\textual
+
+\chapter{INTRODUÇÃO}
+Aqui começa a introdução do seu projeto.
+
+\section{PROBLEMA DE PESQUISA}
+Descreva o problema.
+
+\section{OBJETIVO}
+Descreva o objetivo geral e os específicos.
+
+\section{JUSTIFICATIVA}
+Justifique a relevância do trabalho.
+
+\section{ORGANIZAÇÃO DO TEXTO}
+Apresente como o documento está estruturado.
+
+\chapter{REFERENCIAL TEÓRICO}
+Fundamente a teoria base para a compreensão do trabalho.
+
+\chapter{REVISÃO DE LITERATURA}
+Apresente os trabalhos correlatos e o estado-da-arte.
+
+\chapter{DESENVOLVIMENTO (Nomeie conforme seu tema)}
+Descreva as técnicas, ferramentas ou algoritmos desenvolvidos. Você pode quebrar este desenvolvimento em vários capítulos.
+
+\chapter{METODOLOGIA}
+Descreva como o trabalho foi executado e avaliado.
+
+\chapter{RESULTADOS E DISCUSSÃO}
+Apresente os resultados obtidos com tabelas e gráficos, discutindo os achados.
+
+\chapter{CONCLUSÃO}
+Conclua seu trabalho.
+
+\section{TRABALHOS FUTUROS}
+Sugira continuações para a sua pesquisa.
+
+\section{CONSIDERAÇÕES FINAIS}
+Considerações finais sobre o impacto do trabalho.
+
+% ----------------------------------------------------------
+% ELEMENTOS PÓS-TEXTUAIS
+% ----------------------------------------------------------
+\postextual
+
+% --- Referências Bibliográficas ---
+\bibliography{referencias} % Nome do arquivo .bib sem a extensão
+
+% --- Apêndices ---
+\begin{apendicesenv}
+
+\chapter{PLANEJAMENTO DE EXECUÇÃO}
+Seu anexo ou apêndice aqui.
+
+\end{apendicesenv}
+
+\end{document}
