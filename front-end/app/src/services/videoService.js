@@ -56,6 +56,86 @@ class VideoService {
     }
   }
 
+  async deleteProject(videoId) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/files/videos/${videoId}`, {
+        method: 'DELETE',
+        headers: authHeader(),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao excluir projeto');
+      }
+      return res.json();
+    } catch (error) {
+      console.error('VideoService [deleteProject] Error:', error);
+      throw error;
+    }
+  }
+
+  async getMarkers(videoId) {
+    try {
+      return await _get(`/files/videos/${videoId}/markers`);
+    } catch (error) {
+      console.error('VideoService [getMarkers] Error:', error);
+      throw error;
+    }
+  }
+
+  async addMarker(videoId, time, label = '') {
+    try {
+      const res = await fetch(`${API_BASE_URL}/files/videos/${videoId}/markers`, {
+        method: 'POST',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ time, label }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao adicionar marcador');
+      }
+      return res.json();
+    } catch (error) {
+      console.error('VideoService [addMarker] Error:', error);
+      throw error;
+    }
+  }
+
+  async updateMarker(markerId, updates) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/files/markers/${markerId}`, {
+        method: 'PATCH',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao atualizar marcador');
+      }
+      return res.json();
+    } catch (error) {
+      console.error('VideoService [updateMarker] Error:', error);
+      throw error;
+    }
+  }
+
+  async bulkReplaceEmotions(videoId, startTime, endTime, newEmotion) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/files/videos/${videoId}/bulk-replace-emotions`, {
+        method: 'PATCH',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start_time: startTime, end_time: endTime, new_emotion: newEmotion }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro na substituição em lote');
+      }
+      return res.json();
+    } catch (error) {
+      console.error('VideoService [bulkReplaceEmotions] Error:', error);
+      throw error;
+    }
+  }
+
   async generateReport(videoId) {
     try {
       const res = await fetch(`${API_BASE_URL}/relatorios/${videoId}`, {

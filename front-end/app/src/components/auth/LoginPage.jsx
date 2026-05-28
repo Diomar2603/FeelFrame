@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import './LoginPage.css';
 
+const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate   = useNavigate();
@@ -124,18 +126,21 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="login-divider"><span>ou</span></div>
-
-        <div className="google-btn-wrapper">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={() => setError('Falha no login com Google.')}
-            useOneTap={false}
-            text={mode === 'register' ? 'signup_with' : 'signin_with'}
-            shape="rectangular"
-            width="100%"
-          />
-        </div>
+        {GOOGLE_ENABLED && (
+          <>
+            <div className="login-divider"><span>ou</span></div>
+            <div className="google-btn-wrapper">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError('Falha no login com Google.')}
+                useOneTap={false}
+                text={mode === 'register' ? 'signup_with' : 'signin_with'}
+                shape="rectangular"
+                width="100%"
+              />
+            </div>
+          </>
+        )}
 
       </div>
     </div>

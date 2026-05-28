@@ -23,9 +23,33 @@ html, body, #root {
    HEADER SUPERIOR
 ========================================== */
 .top-bar {
-  display: flex; justify-content: space-between; align-items: center;
-  background: #000000; padding: 6px 15px; font-size: 13px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  background: #000000;
+  padding: 6px 15px;
+  font-size: 13px;
 }
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .menu-nav { display: flex; gap: 20px; color: #aaa; }
 .btn-primary, .btn-secondary {
   background: #007acc; color: white; border: none;
@@ -37,7 +61,6 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
 }
 .user-name {
   color: #aaa;
@@ -172,6 +195,8 @@ html, body, #root {
 .timeline-tracks {
   flex: 1; position: relative;
   display: flex; flex-direction: column;
+  cursor: crosshair;
+  user-select: none;
 }
 
 /* Agulha de Reprodução Vermelha */
@@ -242,6 +267,42 @@ html, body, #root {
 .dropdown-empty { text-align: center; color: #888; font-style: italic; cursor: default !important; }
 .dropdown-empty:hover { background-color: transparent !important; color: #888 !important; }
 
+/* Item de projeto com botão de exclusão */
+.dropdown-menu li.dropdown-item {
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.dropdown-item-name {
+  flex: 1;
+  padding: 10px 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dropdown-item-delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 10px 12px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+.dropdown-item-delete:hover {
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.12);
+}
+.dropdown-menu li.dropdown-item:hover .dropdown-item-delete {
+  color: rgba(255,255,255,0.6);
+}
+.dropdown-menu li.dropdown-item:hover .dropdown-item-delete:hover {
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.2);
+}
+
 /* ==========================================
    TOAST NOTIFICATION (AVISOS BACKGROUND)
 ========================================== */
@@ -301,4 +362,305 @@ html, body, #root {
   font-size: 18px;
   color: #666;
   background: #1e1e1e;
+}
+
+/* Toast success / error */
+.toast-notification.toast-success { background-color: #2d7a4f; }
+.toast-notification.toast-error   { background-color: #c0392b; }
+
+/* ==========================================
+   MARCADORES NA TIMELINE
+========================================== */
+
+/* ==========================================
+   MARCADORES — PIN + TOOLTIP
+========================================== */
+
+/* Linha vertical do marcador — cor via CSS custom property */
+.marker-pin {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--mc, #f0a500);
+  z-index: 8;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+/* Triângulo indicador no topo do pin (apontando para baixo) */
+.marker-pin-arrow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--mc, #f0a500);
+  pointer-events: none;
+}
+
+/* Tooltip: oculto por padrão, exibido no hover do pin */
+.marker-tooltip {
+  display: none;
+  position: absolute;
+  top: 10px;           /* aparece logo abaixo do triângulo, dentro da timeline */
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px 10px;
+  white-space: nowrap;
+  z-index: 200;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+  min-width: 170px;
+  cursor: default;
+}
+
+.marker-pin:hover .marker-tooltip { display: flex; }
+
+.marker-tooltip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.marker-tooltip-label {
+  font-size: 12px;
+  color: #eee;
+  font-weight: 600;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.marker-tooltip-time {
+  font-size: 11px;
+  color: #aaa;
+  font-family: monospace;
+}
+.marker-tooltip-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #333;
+  padding-top: 6px;
+}
+.marker-tooltip-color-label {
+  font-size: 11px;
+  color: #888;
+}
+.marker-color-input {
+  width: 28px;
+  height: 20px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+}
+
+/* ==========================================
+   DRAG-TO-SELECT + BULK REPLACE
+========================================== */
+
+/* Overlay de seleção por arraste na timeline */
+.drag-selection {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 122, 204, 0.25);
+  border: 1px solid rgba(0, 122, 204, 0.7);
+  border-top: none;
+  border-bottom: none;
+  z-index: 7;
+  pointer-events: none;
+}
+
+/* Barra de ação de substituição em lote */
+.bulk-replace-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 15px;
+  background: #1a2a3a;
+  border-top: 1px solid #007acc;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.bulk-replace-info {
+  color: #7ec8e3;
+  font-family: monospace;
+  white-space: nowrap;
+}
+.bulk-replace-select {
+  background: #2a2a2b;
+  border: 1px solid #555;
+  color: #ddd;
+  padding: 3px 8px;
+  border-radius: 2px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.bulk-replace-select:focus { outline: none; border-color: #007acc; }
+.bulk-replace-apply-btn {
+  background: #007acc;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 2px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.15s;
+}
+.bulk-replace-apply-btn:hover:not(:disabled) { background: #005fa3; }
+.bulk-replace-apply-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.bulk-replace-cancel-btn {
+  background: none;
+  border: 1px solid #555;
+  color: #888;
+  padding: 3px 8px;
+  border-radius: 2px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.bulk-replace-cancel-btn:hover { color: #ff4d4f; border-color: #ff4d4f; }
+
+/* Formulário inline de adicionar marcador */
+.marker-add-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.marker-label-input {
+  background: #1a1a1a;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 3px 8px;
+  border-radius: 2px;
+  font-size: 12px;
+  width: 150px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.marker-label-input:focus { border-color: #007acc; }
+.marker-label-input::placeholder { color: #555; }
+.btn-marker-add {
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.btn-marker-add:hover {
+  background: #007acc;
+  color: white;
+  border-color: #007acc;
+}
+
+/* ==========================================
+   RESPONSIVIDADE
+========================================== */
+
+/* Tablet (≤ 1024px) */
+@media (max-width: 1024px) {
+  .left-monitor { width: 22%; min-width: 180px; }
+  .avatar-circle { width: 70px; height: 70px; }
+  .timeline-body { height: 110px; }
+}
+
+/* Mobile (≤ 768px) */
+@media (max-width: 768px) {
+  html, body, #root {
+    overflow: auto;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .editor-container {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  /* Header: 2 colunas no tablet/mobile */
+  .top-bar {
+    grid-template-columns: auto auto;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .header-center { justify-self: end; }
+  .header-right {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    border-top: 1px solid #222;
+    padding-top: 6px;
+  }
+
+  .marker-label-input { width: 90px; }
+
+  /* Monitores empilhados verticalmente */
+  .monitors-area {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .left-monitor {
+    width: 100%;
+    min-width: unset;
+    flex-direction: row;
+    height: 140px;
+    border-right: none;
+    border-bottom: 2px solid #1a1a1a;
+  }
+
+  .cam-box {
+    width: 50%;
+    height: 100%;
+    border-bottom: none;
+    border-right: 2px solid #1a1a1a;
+  }
+
+  .avatar-box {
+    width: 50%;
+    height: 100%;
+  }
+
+  .avatar-circle { width: 54px; height: 54px; padding: 8px; }
+  .emotion-label { font-size: 11px; margin-top: 8px; }
+
+  .right-monitor { height: 200px; }
+
+  /* Timeline compacta */
+  .timeline-body { height: 80px; }
+  .timeline-headers { width: 60px; }
+  .avatar-icon svg { width: 30px; height: 30px; }
+  .emotion-lane { height: 12px; }
+
+  /* Toast cobre a tela toda em baixo */
+  .toast-notification {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    font-size: 13px;
+  }
+}
+
+/* Mobile pequeno (≤ 480px) */
+@media (max-width: 480px) {
+  .top-bar { padding: 6px 8px; font-size: 12px; }
+  .btn-primary, .btn-secondary { padding: 4px 10px; font-size: 12px; }
+  .btn-menu { font-size: 12px; }
+  .right-monitor { height: 160px; }
+  .left-monitor { height: 120px; }
 }

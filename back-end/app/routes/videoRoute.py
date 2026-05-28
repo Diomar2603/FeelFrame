@@ -2,11 +2,12 @@ import os
 import asyncio
 import uuid
 from io import BytesIO
-from typing import List, AsyncGenerator
+from typing import List, AsyncGenerator, Optional
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
+from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from app.services.videoService import VideoService
@@ -15,6 +16,30 @@ from app.services.storageFactory import create_storage_service
 from app.models.StorageSource import StorageSource
 from app.utils.DatabaseConfig import DatabaseConfig
 from app.utils.auth_deps import get_current_user
+
+# ---------------------------------------------------------------------------
+# Schemas de entrada
+# ---------------------------------------------------------------------------
+
+class MarkerIn(BaseModel):
+    time: float
+    label: Optional[str] = ""
+    color: Optional[str] = None
+
+
+class MarkerUpdate(BaseModel):
+    label: Optional[str] = None
+    color: Optional[str] = None
+
+
+_VALID_EMOTIONS = frozenset({"Feliz", "Triste", "Surpreso", "Medo", "Neutro", "Indefinido"})
+
+
+class BulkReplaceIn(BaseModel):
+    start_time: float
+    end_time: float
+    new_emotion: str
+
 
 # ---------------------------------------------------------------------------
 # Router
@@ -507,6 +532,231 @@ async def list_processed_videos(current_user: dict = Depends(get_current_user)):
     ]
 
     return {"total": len(videos), "videos": videos}
+
+
+# ---------------------------------------------------------------------------
+# Exclusão de projeto (cascata)
+# ---------------------------------------------------------------------------
+
+@router.delete("/videos/{video_id}", status_code=200)
+async def delete_video(video_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Remove permanentemente um projeto de vídeo e todos os dados associados
+    (frame_analysis, markers, relatorios) — equivalente a ON DELETE CASCADE.
+
+    Retorna 404 se o vídeo não existir ou não pertencer ao usuário autenticado.
+    """
+    _require_video_service()
+
+    db      = db_config_instance.client[db_config_instance.db_name]
+    user_id = current_user["user_id"]
+
+    video_doc = db["videos"].find_one({"_id": video_id, "user_id": user_id})
+    if video_doc is None:
+        raise HTTPException(status_code=404, detail=f"Projeto '{video_id}' não encontrado.")
+
+    db["frame_analysis"].delete_many({"video_id": video_id})
+    db["markers"].delete_many({"video_id": video_id})
+    db["relatorios"].delete_many({"video_id": video_id})
+    db["videos"].delete_one({"_id": video_id})
+
+    return {"message": f"Projeto '{video_id}' excluído com sucesso."}
+
+
+# ---------------------------------------------------------------------------
+# Marcadores na timeline
+# ---------------------------------------------------------------------------
+
+@router.get("/videos/{video_id}/markers")
+async def get_video_markers(video_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Retorna todos os marcadores de um vídeo, ordenados por tempo (segundos).
+    """
+    _require_video_service()
+
+    db      = db_config_instance.client[db_config_instance.db_name]
+    user_id = current_user["user_id"]
+
+    if db["videos"].find_one({"_id": video_id, "user_id": user_id}, {"_id": 1}) is None:
+        raise HTTPException(status_code=404, detail=f"Vídeo '{video_id}' não encontrado.")
+
+    docs = list(
+        db["markers"]
+        .find({"video_id": video_id}, {"_id": 1, "time": 1, "label": 1, "color": 1, "created_at": 1})
+        .sort("time", 1)
+    )
+    markers = [
+        {
+            "marker_id":  d["_id"],
+            "time":       d["time"],
+            "label":      d.get("label", ""),
+            "color":      d.get("color"),
+            "created_at": d.get("created_at"),
+        }
+        for d in docs
+    ]
+    return {"video_id": video_id, "markers": markers}
+
+
+@router.post("/videos/{video_id}/markers", status_code=201)
+async def add_video_marker(
+    video_id: str,
+    body: MarkerIn,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Adiciona um marcador em um instante específico do vídeo.
+
+    Body JSON: { "time": 12.5, "label": "Ponto de atenção" }
+    """
+    _require_video_service()
+
+    db      = db_config_instance.client[db_config_instance.db_name]
+    user_id = current_user["user_id"]
+
+    if db["videos"].find_one({"_id": video_id, "user_id": user_id}, {"_id": 1}) is None:
+        raise HTTPException(status_code=404, detail=f"Vídeo '{video_id}' não encontrado.")
+
+    marker_id = str(uuid.uuid4())
+    now       = datetime.now(timezone.utc).isoformat()
+    db["markers"].insert_one({
+        "_id":        marker_id,
+        "video_id":   video_id,
+        "time":       body.time,
+        "label":      body.label or "",
+        "color":      body.color,
+        "created_at": now,
+    })
+
+    return {
+        "marker_id":  marker_id,
+        "video_id":   video_id,
+        "time":       body.time,
+        "label":      body.label or "",
+        "color":      body.color,
+        "created_at": now,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Atualização de marcador (cor / rótulo)
+# ---------------------------------------------------------------------------
+
+@router.patch("/markers/{marker_id}", status_code=200)
+async def update_marker(
+    marker_id: str,
+    body: MarkerUpdate,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Atualiza os campos `label` e/ou `color` de um marcador existente.
+    Verifica a propriedade por meio do video_id associado.
+    """
+    _require_video_service()
+
+    db      = db_config_instance.client[db_config_instance.db_name]
+    user_id = current_user["user_id"]
+
+    marker_doc = db["markers"].find_one({"_id": marker_id})
+    if marker_doc is None:
+        raise HTTPException(status_code=404, detail=f"Marcador '{marker_id}' não encontrado.")
+
+    video_doc = db["videos"].find_one({"_id": marker_doc["video_id"], "user_id": user_id}, {"_id": 1})
+    if video_doc is None:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado a este marcador.")
+
+    updates: dict = {}
+    if body.label is not None:
+        updates["label"] = body.label
+    if body.color is not None:
+        updates["color"] = body.color
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
+
+    db["markers"].update_one({"_id": marker_id}, {"$set": updates})
+
+    updated = db["markers"].find_one({"_id": marker_id})
+    return {
+        "marker_id":  updated["_id"],
+        "video_id":   updated["video_id"],
+        "time":       updated["time"],
+        "label":      updated.get("label", ""),
+        "color":      updated.get("color"),
+        "created_at": updated.get("created_at"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Substituição em lote de emoções por intervalo de tempo
+# ---------------------------------------------------------------------------
+
+import logging as _logging
+
+@router.patch("/videos/{video_id}/bulk-replace-emotions", status_code=200)
+async def bulk_replace_emotions(
+    video_id: str,
+    body: BulkReplaceIn,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Substitui a emoção de todos os frames dentro do intervalo
+    [start_time, end_time] (segundos) por `new_emotion`.
+
+    Executa dentro de uma transação MongoDB (requer replica set).
+    Em ambientes sem replica set (desenvolvimento), usa atualização direta
+    com fallback automático.
+
+    Retorna o total de frames atualizados e a timeline de emoções reconstruída.
+    """
+    _require_video_service()
+
+    if body.new_emotion not in _VALID_EMOTIONS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Emoção inválida. Aceitas: {sorted(_VALID_EMOTIONS)}",
+        )
+
+    db      = db_config_instance.client[db_config_instance.db_name]
+    user_id = current_user["user_id"]
+
+    video_doc = db["videos"].find_one({"_id": video_id, "user_id": user_id, "status": "success"})
+    if video_doc is None:
+        raise HTTPException(status_code=404, detail=f"Vídeo '{video_id}' não encontrado.")
+
+    start_ms = int(body.start_time * 1000)
+    end_ms   = int(body.end_time   * 1000)
+    query    = {"video_id": video_id, "timestamp_ms": {"$gte": start_ms, "$lte": end_ms}}
+    new_val  = {"$set": {"emocao": body.new_emotion}}
+
+    # Tenta executar dentro de uma transação ACID (requer replica set no MongoDB)
+    try:
+        with db_config_instance.client.start_session() as session:
+            with session.start_transaction():
+                result = db["frame_analysis"].update_many(query, new_val, session=session)
+    except Exception as txn_err:
+        # Fallback: instância standalone sem replica set
+        _logging.warning("Transação não suportada; usando atualização direta. Causa: %s", txn_err)
+        result = db["frame_analysis"].update_many(query, new_val)
+
+    # Reconstrói a timeline de emoções com os dados atualizados
+    frames = list(
+        db["frame_analysis"]
+        .find(
+            {"video_id": video_id},
+            {"timestamp_ms": 1, "frame_number": 1, "emocao": 1, "_id": 0},
+        )
+        .sort([("timestamp_ms", 1), ("frame_number", 1)])
+    )
+
+    emocao_blocks = await _build_timeline_blocks(
+        frames, field="emocao", default_below_threshold="Neutro"
+    )
+
+    return {
+        "updated_count": result.modified_count,
+        "emocao": emocao_blocks,
+    }
 
 
 # ---------------------------------------------------------------------------

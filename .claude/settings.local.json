@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/c/Users/Leandro Diomar/repos/FeelFrame/FeelFrame\" && find . -type f \\\\\\( -name \"*.py\" -o -name \"*.json\" -o -name \".env*\" -o -name \"*.tsx\" -o -name \"*.ts\" -o -name \"*.jsx\" -o -name \"*.js\" \\\\\\) | sort)",
+      "Read(//c/c/Users/Leandro Diomar/repos/FeelFrame/**)"
+    ]
+  }
+}
