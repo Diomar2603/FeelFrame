@@ -268,8 +268,16 @@ class VideoService:
     # Núcleo do processamento — SÍNCRONO, roda no ThreadPoolExecutor
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _user_folder(base: str, user_id: Optional[str]) -> str:
+        """Retorna caminho de storage organizado por usuário quando disponível."""
+        if user_id:
+            return f"feelframe/users/{user_id}/{base}"
+        return f"feelframe/{base}"
+
     def _process_video_sync(self, original_file_location: str,
-                            video_id: str) -> Dict[str, Any]:
+                            video_id: str,
+                            user_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Loop principal de processamento de vídeo.
 
@@ -322,7 +330,7 @@ class VideoService:
             original_cloud = self.storage.upload_video(
                 file_path=original_file_location,
                 public_id=f"{video_id}_original",
-                folder="feelframe/videos_originais",
+                folder=self._user_folder("videos_originais", user_id),
             )
             self.video_collection.update_one(
                 {"_id": video_id},
@@ -430,7 +438,7 @@ class VideoService:
             processed_cloud = self.storage.upload_video(
                 file_path=output_file_location,
                 public_id=f"{video_id}_processado",
-                folder="feelframe/videos_processados",
+                folder=self._user_folder("videos_processados", user_id),
             )
 
             duration_seconds  = (input_frame_count / fps) if fps > 0 else 0.0
@@ -548,7 +556,8 @@ class VideoService:
             }
 
     async def processFile_by_id(self, file_bytes: bytes, filename: str,
-                                video_id: str) -> Dict[str, Any]:
+                                video_id: str,
+                                user_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Processa vídeo a partir de bytes (sem criar VideoMetadata novo) —
         usado quando o registro já existe no banco (ex.: reprocessamento).
@@ -575,6 +584,7 @@ class VideoService:
                 self._process_video_sync,
                 original_file_location,
                 video_id,
+                user_id,
             )
 
             result["original_filename"] = safe_original_filename

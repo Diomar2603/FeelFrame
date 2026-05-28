@@ -27,9 +27,39 @@ html, body, #root {
   background: #000000; padding: 6px 15px; font-size: 13px;
 }
 .menu-nav { display: flex; gap: 20px; color: #aaa; }
-.btn-primary, .btn-secondary { 
-  background: #007acc; color: white; border: none; 
+.btn-primary, .btn-secondary {
+  background: #007acc; color: white; border: none;
   padding: 4px 15px; border-radius: 2px; font-weight: bold; cursor: pointer;
+}
+
+/* User menu (canto direito do header) */
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.user-name {
+  color: #aaa;
+  font-size: 12px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-logout {
+  background: transparent;
+  border: 1px solid #555;
+  color: #aaa;
+  padding: 3px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-logout:hover {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
 }
 
 /* ==========================================

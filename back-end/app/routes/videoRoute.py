@@ -5,7 +5,7 @@ from io import BytesIO
 from typing import List, AsyncGenerator
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
 from dotenv import load_dotenv
 
@@ -14,6 +14,7 @@ from app.services.interfaces.IStorageService import IStorageService
 from app.services.storageFactory import create_storage_service
 from app.models.StorageSource import StorageSource
 from app.utils.DatabaseConfig import DatabaseConfig
+from app.utils.auth_deps import get_current_user
 
 # ---------------------------------------------------------------------------
 # Router
@@ -67,7 +68,7 @@ def _require_cloudinary():
         raise HTTPException(status_code=503, detail="Serviço de armazenamento não inicializado.")
 
 
-async def _register_pending_video(filename: str) -> str:
+async def _register_pending_video(filename: str, user_id: str | None = None) -> str:
     """
     Cria um documento 'pending' no MongoDB antes de iniciar o processamento,
     garantindo que o video_id já exista quando o cliente começar a fazer polling.
@@ -78,6 +79,7 @@ async def _register_pending_video(filename: str) -> str:
     db["videos"].insert_one({
         "_id": video_id,
         "original_filename": filename,
+        "user_id": user_id,
         "status": "pending",
         "storage_source": cloudinary_instance.source.value if cloudinary_instance else StorageSource.FIREBASE.value,
         "progress_percent": 0,
@@ -88,13 +90,15 @@ async def _register_pending_video(filename: str) -> str:
     return video_id
 
 
-async def _background_process_single(file_bytes: bytes, filename: str, video_id: str):
+async def _background_process_single(file_bytes: bytes, filename: str,
+                                     video_id: str, user_id: str | None = None):
     """Tarefa de background: processa um único vídeo usando o video_id já registrado."""
     try:
         await video_service_instance.processFile_by_id(
             file_bytes=file_bytes,
             filename=filename,
             video_id=video_id,
+            user_id=user_id,
         )
     except Exception as e:
         # Atualiza o status para 'failed' em caso de erro inesperado fora do service
@@ -142,6 +146,7 @@ async def _background_process_multiple(files_data: list[dict], video_ids: list[s
 async def upload_single_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Aceita o vídeo e inicia o processamento em background.
@@ -155,16 +160,18 @@ async def upload_single_file(
 
     # Lê os bytes enquanto o arquivo ainda está disponível na requisição
     file_bytes = await file.read()
+    user_id    = current_user["user_id"]
 
     # Registra o documento no MongoDB antes de enfileirar o background task,
     # evitando race condition entre o cliente começar o polling e o task iniciar.
-    video_id = await _register_pending_video(filename=file.filename)
+    video_id = await _register_pending_video(filename=file.filename, user_id=user_id)
 
     background_tasks.add_task(
         _background_process_single,
         file_bytes=file_bytes,
         filename=file.filename,
         video_id=video_id,
+        user_id=user_id,
     )
 
     return {
@@ -180,6 +187,7 @@ async def upload_single_file(
 async def upload_multiple_files(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Aceita múltiplos vídeos e inicia o processamento em batch no background.
@@ -199,6 +207,8 @@ async def upload_multiple_files(
             detail=f"Máximo de {MAX_CONCURRENT} arquivos por vez. Enviados: {len(files)}",
         )
 
+    user_id = current_user["user_id"]
+
     # Lê todos os bytes antes de sair da requisição
     files_data = [
         {"bytes": await f.read(), "filename": f.filename}
@@ -207,7 +217,7 @@ async def upload_multiple_files(
 
     # Registra todos os vídeos como 'pending' de forma concorrente
     video_ids = await asyncio.gather(*[
-        _register_pending_video(filename=f["filename"])
+        _register_pending_video(filename=f["filename"], user_id=user_id)
         for f in files_data
     ])
 
@@ -476,25 +486,17 @@ async def get_video_data(video_id: str):
 # ---------------------------------------------------------------------------
 
 @router.get("/videos/")
-async def list_processed_videos():
+async def list_processed_videos(current_user: dict = Depends(get_current_user)):
     """
-    Retorna todos os vídeos que já foram processados com sucesso.
-
-    Resposta:
-        {
-            "total": 3,
-            "videos": [
-                { "video_id": "abc123", "original_filename": "entrevista.mp4" },
-                ...
-            ]
-        }
+    Retorna todos os vídeos processados com sucesso do usuário autenticado.
     """
     _require_video_service()
 
-    db = db_config_instance.client[db_config_instance.db_name]
+    db      = db_config_instance.client[db_config_instance.db_name]
+    user_id = current_user["user_id"]
     docs = list(
         db["videos"].find(
-            {"status": "success"},
+            {"status": "success", "user_id": user_id},
             {"_id": 1, "original_filename": 1},
         ).sort("created_at", -1)
     )

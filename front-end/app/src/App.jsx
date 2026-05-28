@@ -1,22 +1,31 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import './Editor.css';
 import { EMOTIONS_CONFIG } from './constants/emotions';
 import { videoService } from './services/videoService';
+import { useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './components/auth/LoginPage';
 
-export default function VideoEditor() {
+function VideoEditor() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   const mainVideoRef = useRef(null);
   const faceVideoRef = useRef(null);
-  const requestRef = useRef(); 
-  
+  const requestRef = useRef();
+
   // Estados da API / Sistema
   const [videoData, setVideoData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   // Novos Estados (Projetos e Notificações)
   const [projects, setProjects] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  const handleLogout = () => { logout(); navigate('/login', { replace: true }); };
 
   // Estados do Player
   const [isPlaying, setIsPlaying] = useState(false);
@@ -203,13 +212,20 @@ export default function VideoEditor() {
           )}
         </div>
 
-        <button 
-          className="btn-secondary" 
+        <button
+          className="btn-secondary"
           onClick={handleReport}
-          disabled={!videoData} // Desabilita se não tiver vídeo selecionado
+          disabled={!videoData}
         >
           Relatório
         </button>
+
+        <div className="user-menu">
+          <span className="user-name">{user?.name}</span>
+          <button className="btn-logout" onClick={handleLogout} title="Sair">
+            Sair
+          </button>
+        </div>
       </header>
 
       <main className="workspace">
@@ -290,8 +306,8 @@ export default function VideoEditor() {
                                 const left = (block.start / duration) * 100;
                                 const width = ((block.end - block.start) / duration) * 100;
                                 return (
-                                  <div 
-                                    key={idx} 
+                                  <div
+                                    key={idx}
                                     className="emotion-block"
                                     style={{ left: `${left}%`, width: `${width}%`, backgroundColor: emotionObj.color }}
                                   />
@@ -308,5 +324,21 @@ export default function VideoEditor() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <VideoEditor />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }

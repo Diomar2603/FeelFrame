@@ -22,6 +22,8 @@ class VideoMetadata:
 
     _id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
+    user_id: Optional[str] = None          # ID do usuário dono do vídeo
+
     status: str = "processing"
     processing_message: Optional[str] = None
     error_message: Optional[str] = None
