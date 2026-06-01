@@ -14,7 +14,7 @@ async function _get(path) {
 class VideoService {
   async getVideoData(videoId) {
     try {
-      const data = await _get(`/files/video-data/${videoId}`);
+      const data = await _get(`/arquivos/dados/${videoId}`);
       if (data.status !== 'success' || !data.analysis) {
         throw new Error('Payload da API inválido ou análise ainda em andamento.');
       }
@@ -30,7 +30,7 @@ class VideoService {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch(`${API_BASE_URL}/files/upload/`, {
+      const res = await fetch(`${API_BASE_URL}/arquivos/enviar/`, {
         method: 'POST',
         headers: authHeader(),
         body: formData,
@@ -49,7 +49,7 @@ class VideoService {
 
   async getProjects() {
     try {
-      return await _get('/files/videos/');
+      return await _get('/arquivos/videos/');
     } catch (error) {
       console.error('VideoService [getProjects] Error:', error);
       throw error;
@@ -58,7 +58,7 @@ class VideoService {
 
   async deleteProject(videoId) {
     try {
-      const res = await fetch(`${API_BASE_URL}/files/videos/${videoId}`, {
+      const res = await fetch(`${API_BASE_URL}/arquivos/videos/${videoId}`, {
         method: 'DELETE',
         headers: authHeader(),
       });
@@ -75,7 +75,7 @@ class VideoService {
 
   async getMarkers(videoId) {
     try {
-      return await _get(`/files/videos/${videoId}/markers`);
+      return await _get(`/arquivos/videos/${videoId}/marcadores`);
     } catch (error) {
       console.error('VideoService [getMarkers] Error:', error);
       throw error;
@@ -84,7 +84,7 @@ class VideoService {
 
   async addMarker(videoId, time, label = '') {
     try {
-      const res = await fetch(`${API_BASE_URL}/files/videos/${videoId}/markers`, {
+      const res = await fetch(`${API_BASE_URL}/arquivos/videos/${videoId}/marcadores`, {
         method: 'POST',
         headers: { ...authHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ time, label }),
@@ -102,7 +102,7 @@ class VideoService {
 
   async updateMarker(markerId, updates) {
     try {
-      const res = await fetch(`${API_BASE_URL}/files/markers/${markerId}`, {
+      const res = await fetch(`${API_BASE_URL}/arquivos/marcadores/${markerId}`, {
         method: 'PATCH',
         headers: { ...authHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -120,7 +120,7 @@ class VideoService {
 
   async bulkReplaceEmotions(videoId, startTime, endTime, newEmotion) {
     try {
-      const res = await fetch(`${API_BASE_URL}/files/videos/${videoId}/bulk-replace-emotions`, {
+      const res = await fetch(`${API_BASE_URL}/arquivos/videos/${videoId}/substituir-emocoes`, {
         method: 'PATCH',
         headers: { ...authHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ start_time: startTime, end_time: endTime, new_emotion: newEmotion }),

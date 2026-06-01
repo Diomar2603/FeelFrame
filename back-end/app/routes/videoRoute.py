@@ -45,7 +45,7 @@ class BulkReplaceIn(BaseModel):
 # Router
 # ---------------------------------------------------------------------------
 
-router = APIRouter(prefix="/files", tags=["Files"])
+router = APIRouter(prefix="/arquivos", tags=["Arquivos"])
 
 # ---------------------------------------------------------------------------
 # Inicialização dos serviços
@@ -167,7 +167,7 @@ async def _background_process_multiple(files_data: list[dict], video_ids: list[s
 # Rotas de vídeo
 # ---------------------------------------------------------------------------
 
-@router.post("/upload/", status_code=202)
+@router.post("/enviar/", status_code=202)
 async def upload_single_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -203,12 +203,12 @@ async def upload_single_file(
         "message": "Upload recebido. O processamento foi iniciado em background.",
         "video_id": video_id,
         "status": "pending",
-        "progress_url": f"/files/processing-progress/{video_id}",
-        "result_url": f"/files/urls/{video_id}",
+        "progress_url": f"/arquivos/progresso/{video_id}",
+        "result_url": f"/arquivos/dados/{video_id}",
     }
 
 
-@router.post("/upload-multiple/", status_code=202)
+@router.post("/enviar-multiplos/", status_code=202)
 async def upload_multiple_files(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
@@ -260,8 +260,8 @@ async def upload_multiple_files(
                 "video_id": vid,
                 "filename": f["filename"],
                 "status": "pending",
-                "progress_url": f"/files/processing-progress/{vid}",
-                "result_url": f"/files/video-data/{vid}",
+                "progress_url": f"/arquivos/progresso/{vid}",
+                "result_url": f"/arquivos/dados/{vid}",
             }
             for vid, f in zip(video_ids, files_data)
         ],
@@ -272,7 +272,7 @@ async def upload_multiple_files(
 # SSE — progresso de processamento em tempo real
 # ---------------------------------------------------------------------------
 
-@router.get("/processing-progress/{video_id}")
+@router.get("/progresso/{video_id}")
 async def processing_progress(video_id: str):
     """
     Server-Sent Events (SSE) que transmite o percentual de progresso do processamento.
@@ -400,7 +400,7 @@ async def _build_timeline_blocks(frames: list, field: str, default_below_thresho
     return blocks
 
 
-@router.get("/video-data/{video_id}")
+@router.get("/dados/{video_id}")
 async def get_video_data(video_id: str):
     """
     Retorna as URLs do video processado e tres timelines de analise agrupadas
@@ -567,7 +567,7 @@ async def delete_video(video_id: str, current_user: dict = Depends(get_current_u
 # Marcadores na timeline
 # ---------------------------------------------------------------------------
 
-@router.get("/videos/{video_id}/markers")
+@router.get("/videos/{video_id}/marcadores")
 async def get_video_markers(video_id: str, current_user: dict = Depends(get_current_user)):
     """
     Retorna todos os marcadores de um vídeo, ordenados por tempo (segundos).
@@ -598,7 +598,7 @@ async def get_video_markers(video_id: str, current_user: dict = Depends(get_curr
     return {"video_id": video_id, "markers": markers}
 
 
-@router.post("/videos/{video_id}/markers", status_code=201)
+@router.post("/videos/{video_id}/marcadores", status_code=201)
 async def add_video_marker(
     video_id: str,
     body: MarkerIn,
@@ -642,7 +642,7 @@ async def add_video_marker(
 # Atualização de marcador (cor / rótulo)
 # ---------------------------------------------------------------------------
 
-@router.patch("/markers/{marker_id}", status_code=200)
+@router.patch("/marcadores/{marker_id}", status_code=200)
 async def update_marker(
     marker_id: str,
     body: MarkerUpdate,
@@ -693,7 +693,7 @@ async def update_marker(
 
 import logging as _logging
 
-@router.patch("/videos/{video_id}/bulk-replace-emotions", status_code=200)
+@router.patch("/videos/{video_id}/substituir-emocoes", status_code=200)
 async def bulk_replace_emotions(
     video_id: str,
     body: BulkReplaceIn,
@@ -763,7 +763,7 @@ async def bulk_replace_emotions(
 # Upload e armazenamento de relatórios PDF
 # ---------------------------------------------------------------------------
 
-@router.post("/relatorios/upload/")
+@router.post("/relatorios/enviar/")
 async def upload_relatorio_pdf(file: UploadFile = File(...)):
     """
     Faz upload de um PDF de relatório para o Cloudinary e retorna a URL pública.
@@ -920,7 +920,7 @@ async def get_relatorio_url(relatorio_id: str):
 # Status do serviço
 # ---------------------------------------------------------------------------
 
-@router.get("/processing-status/")
+@router.get("/status/")
 async def get_processing_status():
     """Retorna o status atual do serviço de processamento."""
     if video_service_instance is None:

@@ -123,7 +123,7 @@ function VideoEditor() {
 
       showToast(`"${file.name}" em processamento (0%)...`);
 
-      const source = new EventSource(`${API_BASE}/files/processing-progress/${videoId}`);
+      const source = new EventSource(`${API_BASE}/arquivos/progresso/${videoId}`);
       sseRef.current = source;
 
       source.onmessage = (event) => {

@@ -13,7 +13,7 @@ from app.utils.auth_deps import get_current_user
 
 load_dotenv()
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/autenticacao", tags=["Autenticacao"])
 
 _GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
@@ -25,7 +25,7 @@ _user_service = UserService(DatabaseConfig())
 # Registro
 # ---------------------------------------------------------------------------
 
-@router.post("/register", response_model=AuthResponse, status_code=201)
+@router.post("/registrar", response_model=AuthResponse, status_code=201)
 def register(req: RegisterRequest):
     """Cria nova conta com email e senha."""
     if not req.name or not req.email or not req.password:
@@ -45,7 +45,7 @@ def register(req: RegisterRequest):
 # Login
 # ---------------------------------------------------------------------------
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/entrar", response_model=AuthResponse)
 def login(req: LoginRequest):
     """Autentica com email e senha, retorna JWT."""
     user = _user_service.authenticate_user(req.email, req.password)
@@ -98,7 +98,7 @@ def google_auth(req: GoogleAuthRequest):
 # Perfil do usuário logado
 # ---------------------------------------------------------------------------
 
-@router.get("/me")
+@router.get("/perfil")
 def get_me(current_user: dict = Depends(get_current_user)):
     """Retorna os dados do usuário autenticado (requer Bearer token)."""
     user = _user_service.get_user_by_id(current_user["user_id"])

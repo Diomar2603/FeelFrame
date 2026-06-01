@@ -13,16 +13,16 @@ async function _post(path, body) {
 
 export const authService = {
   register: (name, email, password) =>
-    _post('/auth/register', { name, email, password }),
+    _post('/autenticacao/registrar', { name, email, password }),
 
   login: (email, password) =>
-    _post('/auth/login', { email, password }),
+    _post('/autenticacao/entrar', { email, password }),
 
   googleAuth: (credential) =>
-    _post('/auth/google', { credential }),
+    _post('/autenticacao/google', { credential }),
 
   getMe: (token) =>
-    fetch(`${API_BASE_URL}/auth/me`, {
+    fetch(`${API_BASE_URL}/autenticacao/perfil`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then((r) => r.json()),
 };

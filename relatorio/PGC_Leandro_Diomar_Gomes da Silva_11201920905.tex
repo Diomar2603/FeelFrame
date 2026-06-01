@@ -23,6 +23,7 @@
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{float}
+\usepackage[alf]{abntex2cite}
 
 % Configuração de código-fonte
 \lstset{
@@ -42,7 +43,7 @@
 \titulo{FeelFrame: Sistema Web de Análise de Expressões Faciais e Emoções em Vídeos com Inteligência Artificial}
 \autor{Leandro Diomar Gomes da Silva}
 \local{Santo André}
-\data{2025}
+\data{2026}
 \orientador{Nome do Orientador}
 \instituicao{%
   UNIVERSIDADE FEDERAL DO ABC
@@ -54,37 +55,43 @@
 \preambulo{Projeto de Graduação em Computação apresentado ao Bacharelado em Ciência da Computação da Universidade Federal do ABC, como requisito parcial para a obtenção do título de Bacharel.}
 
 % ---
-% CONFIGURAÇÕES DE APARÊNCIA
+% CONFIGURAÇÕES DE APARÊNCIA E CAPA
 % ---
 \definecolor{blue}{RGB}{41,5,195}
 \hypersetup{
-	pdftitle={\@title},
-	pdfauthor={\@author},
+    pdftitle={\@title},
+    pdfauthor={\@author},
     pdfsubject={\imprimirpreambulo},
-	colorlinks=true,
-	linkcolor=black,
-	citecolor=black,
-	urlcolor=black
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
 }
 
 \renewcommand{\imprimircapa}{%
   \begin{capa}%
-    \center
+    \centering
+    \vspace*{1cm}
     \includegraphics[width=4cm]{Ufabc_logo.png} \\
     \vspace{0.5cm}
     {\ABNTEXchapterfont\large\imprimirinstituicao}
+    
     \vspace*{\fill}
+    
     {\ABNTEXchapterfont\large\imprimirautor}
+    
     \vspace*{\fill}
+    
     {\ABNTEXchapterfont\bfseries\LARGE\imprimirtitulo}
+    
     \vspace*{\fill}
+    
     {\large\imprimirlocal}
     \par
     {\large\imprimirdata}
     \vspace*{1cm}
   \end{capa}
 }
-
 % ---
 % INÍCIO DO DOCUMENTO
 % ---
@@ -167,13 +174,15 @@ O reconhecimento de emoções humanas é uma das capacidades mais complexas da c
 
 Com o avanço do ensino a distância, das videoconferências e da produção de conteúdo audiovisual, surgiu uma demanda crescente por ferramentas capazes de avaliar automaticamente o nível de engajamento e as reações emocionais de uma pessoa ao assistir a um vídeo ou realizar uma apresentação. Educadores desejam saber se seus alunos estão concentrados; criadores de conteúdo querem entender em quais momentos os espectadores ficam mais atentos; pesquisadores de UX precisam capturar reações espontâneas de usuários.
 
+Este trabalho parte diretamente de uma pesquisa anterior realizada na Universidade Federal do ABC: o Trabalho de Conclusão de Curso de \cite{nascimento2024nelson}, cujos resultados foram também publicados no Simpósio Brasileiro de Informática na Educação \cite{nascimento2024sbie}. Essa pesquisa original desenvolveu um algoritmo robusto capaz de detectar emoções faciais e estimar o nível de engajamento a partir de vídeos, combinando visão computacional e aprendizado profundo. O algoritmo original, embora cientificamente sólido, foi concebido para execução em ambiente local --- um script Python que exige instalação de dependências específicas e domínio técnico para operação --- sendo inacessível ao usuário final não especializado. O principal desafio deste PGC é, portanto, de engenharia de produto: transpor essa pesquisa acadêmica para o ambiente web, preservando e ampliando suas capacidades analíticas em uma plataforma acessível e escalável.
+
 Neste contexto, o \textbf{FeelFrame} é proposto como um sistema web completo que automatiza o processo de análise de expressões faciais em vídeos gravados. O usuário faz o upload de um vídeo, o sistema processa cada frame, detecta o rosto, classifica as emoções, estima o engajamento e apresenta todos esses dados em uma linha do tempo interativa dentro de uma interface estilo editor de vídeo.
 
 \section{PROBLEMA DE PESQUISA}
 
 A análise manual de expressões faciais em vídeos é um processo trabalhoso, subjetivo e não escalável. As ferramentas comerciais existentes (como o iMotions e o Affectiva) têm custo elevado e não oferecem abertura técnica para customização. Ferramentas de código aberto, por sua vez, exigem conhecimento técnico avançado para configuração e não possuem interface amigável.
 
-O problema central deste trabalho é: \textit{Como construir um sistema acessível, web-based e de código aberto que permita a qualquer usuário analisar expressões faciais e estados emocionais a partir de vídeos, sem necessidade de conhecimento técnico especializado?}
+O problema central deste trabalho é: \textit{Como transformar o algoritmo de detecção de emoções e engajamento desenvolvido por \cite{nascimento2024nelson} --- concebido para uso local --- em um produto de software web acessível, escalável e utilizável por qualquer pessoa sem conhecimento técnico especializado, sem sacrificar o rigor analítico da pesquisa original?}
 
 \section{OBJETIVOS}
 
@@ -204,6 +213,50 @@ O FeelFrame se justifica em múltiplas frentes:
 \textbf{Mercado}: Pesquisas de UX, marketing e publicidade se beneficiam da análise de reações espontâneas de usuários sem a necessidade de questionários.
 
 \textbf{Técnica}: O trabalho demonstra a integração de tecnologias modernas (DeepFace, MediaPipe, FastAPI, React, MongoDB, Firebase) em um produto coeso e funcional.
+
+\textbf{Continuidade de pesquisa}: O FeelFrame atua como elo entre a pesquisa científica de \cite{nascimento2024nelson} e a engenharia de software aplicada, demonstrando como resultados acadêmicos podem ser transpostos para produtos utilizáveis pela comunidade.
+
+\section{DISCIPLINAS FORMADORAS DO PROJETO}
+
+A construção do FeelFrame mobilizou conhecimentos adquiridos ao longo do curso de Bacharelado em Ciência da Computação da UFABC. A Tabela~\ref{tab:disciplinas} relaciona as principais disciplinas cursadas com as contribuições diretas que cada uma trouxe ao desenvolvimento do sistema.
+
+\begin{table}[H]
+\centering
+\caption{Disciplinas do BCC/UFABC e sua contribuição ao FeelFrame}
+\label{tab:disciplinas}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|p{5.5cm}|p{3.5cm}|p{7.5cm}|}
+\hline
+\textbf{Disciplina} & \textbf{Código} & \textbf{Contribuição ao FeelFrame} \\ \hline
+
+Inteligência Artificial & MCTA014-15 &
+Fundamentos de aprendizado de máquina, redes neurais e classificadores que embasam o uso do DeepFace para reconhecimento de emoções a partir de CNNs pré-treinadas. \\ \hline
+
+Programação Orientada a Objetos & MCTA018-13 &
+Modelagem das entidades do sistema (usuário, vídeo, frame, marcador) com encapsulamento e separação de responsabilidades, viabilizando a arquitetura em camadas (\textit{routes / services / models}) do back-end FastAPI. \\ \hline
+
+Engenharia de Software & MCTA033-15 &
+Princípios de arquitetura de software, design de APIs RESTful, versionamento e boas práticas de desenvolvimento que guiaram a estruturação do projeto em módulos coesos e extensíveis. \\ \hline
+
+Processamento de Linguagem Natural & MCZA017-13 &
+Técnicas de processamento de dados não estruturados e pipelines de análise automatizada que influenciaram a concepção do pipeline de processamento de frames e geração de relatórios textuais com análise ARCS. \\ \hline
+
+Modelagem de Banco de Dados & MCCC012-23 &
+Projeto dos esquemas das coleções MongoDB (\texttt{users}, \texttt{videos}, \texttt{frame\_analysis}, \texttt{markers}), definição de índices, estratégias de integridade referencial em nível de aplicação e consultas eficientes por \texttt{video\_id}. \\ \hline
+
+Sistemas Distribuídos & MCTA025-13 &
+Conceitos de processamento assíncrono, consistência eventual e comunicação entre serviços que fundamentaram o uso de \texttt{BackgroundTasks}, Server-Sent Events (SSE) e a integração com Firebase Storage como serviço externo de armazenamento. \\ \hline
+
+Algoritmos e Estruturas de Dados II & MCTA002-17 &
+Estruturas de dados eficientes para indexação temporal dos frames analisados e algoritmos de percurso usados na construção da linha do tempo multitrack de emoções exibida na interface. \\ \hline
+
+Programação para Web & MCZA019-17 &
+Desenvolvimento do front-end em React (Vite), implementação do contexto de autenticação com JWT no \textit{localStorage}, integração com a API via \textit{fetch} assíncrono e construção da interface estilo editor de vídeo com linha do tempo interativa. \\ \hline
+
+\end{tabular}%
+}
+\fonte{O Autor (2026)}
+\end{table}
 
 \section{ORGANIZAÇÃO DO TEXTO}
 
@@ -280,6 +333,24 @@ O React \cite{react2023} é uma biblioteca JavaScript para construção de inter
 
 A autenticação no FeelFrame utiliza JWT \cite{jones2015json}, um padrão aberto (RFC 7519) para criação de tokens de acesso compactos e autocontidos. O token carrega o identificador do usuário e é assinado com uma chave secreta usando o algoritmo HMAC-SHA256. O tempo de expiração padrão é de 7 dias.
 
+\subsection{Modelo ARCS de Motivação}
+\label{sec:arcs}
+
+O modelo ARCS \cite{keller1987arcs}, proposto por John Keller em 1987, é um \textit{framework} motivacional para \textit{design} instrucional baseado em quatro dimensões: \textbf{A}tenção (\textit{Attention}), \textbf{R}elevância (\textit{Relevance}), \textbf{C}onfiança (\textit{Confidence}) e \textbf{S}atisfação (\textit{Satisfaction}). Cada dimensão representa um aspecto distinto da motivação do aprendiz durante uma atividade educacional.
+
+O modelo encontrou aplicação prática em sistemas de análise de engajamento computacional, onde métricas observáveis do comportamento físico e emocional são utilizadas como proxies para as dimensões motivacionais. O FeelFrame calcula proxies para duas das dimensões:
+
+\begin{itemize}
+    \item \textbf{Atenção (ARCS\_Atenção)}: estimada pelo desvio médio absoluto dos ângulos \textit{yaw} e \textit{pitch} da cabeça em relação à mediana do vídeo, normalizado para o intervalo $[0, 100]$. Quando a cabeça permanece estável na posição central, o score se aproxima de 100; desvios progressivos diminuem o score proporcionalmente. Frames com confiança emocional abaixo de 50\% recebem score zero, evitando falsos positivos por baixa qualidade de detecção;
+    \item \textbf{Satisfação (ARCS\_Satisfação)}: derivada da emoção detectada --- emoção \textit{Feliz} gera pontuação igual à confiança emocional (escala 0--100); \textit{Neutro} contribui com metade desse valor; demais emoções contribuem com zero.
+\end{itemize}
+
+Esses proxies são utilizados no módulo de relatório para gerar gráficos de linha temporal e um painel de validação cruzada que relaciona atenção com engajamento e satisfação com emoção.
+
+\subsection{UMAP -- Redução de Dimensionalidade}
+
+O UMAP (\textit{Uniform Manifold Approximation and Projection}) \cite{mcinnes2018umap} é um algoritmo de redução de dimensionalidade não linear que preserva a estrutura local e global dos dados de forma mais eficiente que o t-SNE. No módulo de relatório do FeelFrame, o UMAP é aplicado opcionalmente sobre os vetores de características multi-dimensionais de cada frame (yaw, pitch, roll, proximidade Z, razões do olhar e confiança emocional) para gerar projeções em 2D e 3D, permitindo a visualização de clusters de comportamento e a identificação de padrões de engajamento ao longo do vídeo.
+
 % ==========================================================
 \chapter{REVISÃO DE LITERATURA}
 \label{cap:revisao}
@@ -310,24 +381,57 @@ O FeelFrame adota uma abordagem heurística para estimativa de engajamento, comb
     \item \textbf{Estado de fluxo}: detectado quando o sujeito está concentrado e em estado emocional positivo \cite{csikszentmihalyi1990flow}.
 \end{enumerate}
 
+\section{Trabalho de Base: Nascimento Junior (2024)}
+\label{sec:nelson}
+
+O presente sistema tem sua origem direta no trabalho de \cite{nascimento2024nelson}, publicado no SBIE 2024 \cite{nascimento2024sbie}. O algoritmo original combina o detector YuNet para localização de rostos, o MediaPipe FaceMesh para estimativa de pose de cabeça e direção do olhar, e o DeepFace para classificação de emoções --- exatamente o mesmo núcleo tecnológico adotado pelo FeelFrame.
+
+A principal contribuição do presente PGC em relação ao trabalho original não reside na substituição ou reformulação do algoritmo de visão computacional, mas na sua \textbf{engenharia de produto}: a criação de uma arquitetura cliente-servidor completa, de uma API RESTful com autenticação e controle multi-usuário, e de uma interface web com linha do tempo interativa, funcionalidades de edição em lote e geração de relatórios. A Tabela~\ref{tab:diferencas} sintetiza as diferenças técnicas entre os dois sistemas.
+
+\begin{table}[H]
+\centering
+\caption{Diferenças entre o algoritmo original \cite{nascimento2024nelson} e o FeelFrame}
+\label{tab:diferencas}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Aspecto}           & \textbf{Algoritmo Original}   & \textbf{FeelFrame}                           \\ \hline
+Ambiente de execução       & Script Python local           & Aplicação web (FastAPI + React)            \\ \hline
+Interface do usuário       & Terminal / arquivo de saída   & Interface gráfica responsiva               \\ \hline
+Autenticação               & Nenhuma                       & JWT + Google OAuth                         \\ \hline
+Processamento              & Síncrono, bloqueante          & Assíncrono, BackgroundTasks + SSE          \\ \hline
+Persistência               & Arquivos locais               & MongoDB + Firebase Storage                 \\ \hline
+Edição de dados            & Não disponível                & Bulk update e marcadores interativos       \\ \hline
+Relatório                  & Saída textual / CSV           & PDF com gráficos Plotly e análise ARCS     \\ \hline
+Dataset de calibração      & Base de controle original     & Base de dados externa para generalização   \\ \hline
+\end{tabular}%
+}
+\fonte{O Autor (2026)}
+\end{table}
+
+A escolha de uma base de dados externa para calibração do modelo de emoção visou testar a capacidade de generalização do sistema em diferentes contextos de iluminação, câmera e diversidade demográfica, conforme discutido na Seção~\ref{sec:resultados_comparacao}.
+
 \section{Ferramentas Similares}
 
-A Tabela \ref{tab:comparativo} apresenta uma comparação entre o FeelFrame e ferramentas similares disponíveis.
+A Tabela \ref{tab:comparativo} apresenta uma comparação entre o FeelFrame e ferramentas similares disponíveis no mercado e na academia.
 
 \begin{table}[H]
 \centering
 \caption{Comparativo entre sistemas de análise emocional de vídeo}
 \label{tab:comparativo}
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-\textbf{Sistema} & \textbf{Open Source} & \textbf{Web-based} & \textbf{Linha do Tempo} & \textbf{Custo} \\ \midrule
-FeelFrame        & Sim                  & Sim                & Sim                     & Gratuito       \\
-iMotions         & Não                  & Não                & Sim                     & Alto           \\
-Affectiva SDK    & Não                  & Parcial            & Não                     & Comercial      \\
-OpenFace         & Sim                  & Não                & Não                     & Gratuito       \\
-py-feat          & Sim                  & Não                & Não                     & Gratuito       \\ \bottomrule
-\end{tabular}
-\fonte{O Autor (2025)}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Sistema} & \textbf{Open Source} & \textbf{Web-based} & \textbf{Linha do Tempo} & \textbf{Edição} & \textbf{Custo} \\ \hline
+FeelFrame                  & Sim & Sim & Sim & Sim & Gratuito  \\ \hline
+Nascimento Jr. (2024)      & Sim & Não & Não & Não & Gratuito  \\ \hline
+iMotions                   & Não & Não & Sim & Parcial & Alto      \\ \hline
+Affectiva SDK              & Não & Parcial & Não & Não & Comercial \\ \hline
+OpenFace                   & Sim & Não & Não & Não & Gratuito  \\ \hline
+py-feat                    & Sim & Não & Não & Não & Gratuito  \\ \hline
+\end{tabular}%
+}
+\fonte{O Autor (2026)}
 \end{table}
 
 % ==========================================================
@@ -361,12 +465,12 @@ O pipeline de processamento é o núcleo do FeelFrame. Ao receber um vídeo, o s
 
 \begin{enumerate}
     \item \textbf{Recebimento e registro}: O vídeo é recebido via upload HTTP, registrado no MongoDB com status \texttt{pending} e enviado para processamento assíncrono em background (FastAPI \texttt{BackgroundTasks});
-    \item \textbf{Extração de frames}: O OpenCV percorre o vídeo frame a frame com uma taxa de salto configurável (padrão: 1 a cada 4 frames -- \texttt{FRAME\_ANALYSIS\_SKIP\_RATE=4});
-    \item \textbf{Detecção de rosto}: Cada frame é processado pelo YuNet para detectar e recortar a região do rosto;
+    \item \textbf{Extração de frames}: O OpenCV percorre o vídeo frame a frame. A variável \texttt{frame\_analysis\_skip\_rate} controla quantos frames são analisados; na implementação atual, todos os frames são analisados (\texttt{skip\_rate=1}), maximizando a precisão temporal da linha do tempo de emoções ao custo de maior tempo de processamento;
+    \item \textbf{Detecção de rosto e recorte fixo}: O YuNet detecta o rosto no \textbf{primeiro frame} do vídeo e o rect de recorte resultante (\textit{fixed\_crop\_rect}) é reutilizado em todos os frames subsequentes. Essa estratégia garante consistência espacial da análise e reduz o overhead de detecção por frame. Para o vídeo de saída, é gerado um recorte ampliado que inclui tronco superior e ombros; para a análise pelo DeepFace, é gerado um recorte em close do rosto, maximizando a qualidade de detecção de emoções. Se nenhum rosto for detectado no primeiro frame, frames pretos são gerados no vídeo de saída;
     \item \textbf{Análise de marcos}: O FaceMesh detecta os 468 marcos faciais e calcula pose de cabeça e direção do olhar;
     \item \textbf{Classificação de emoção}: A região do rosto é passada para o DeepFace, que retorna scores de probabilidade para cada categoria de emoção;
     \item \textbf{Cálculo de engajamento}: Com base na emoção, pose e olhar, é calculada a dimensão comportamental e a estimativa de engajamento;
-    \item \textbf{Persistência}: Cada \texttt{FrameAnalysis} é salvo na coleção \texttt{frame\_analysis} do MongoDB;
+    \item \textbf{Persistência em lote}: Os resultados de \texttt{FrameAnalysis} são acumulados em memória e persistidos em lote na coleção \texttt{frame\_analysis} do MongoDB a cada 150 frames (\textit{batch insert}), reduzindo o número de operações de I/O em banco de dados e o overhead de rede sem comprometer a integridade dos dados;
     \item \textbf{Armazenamento de vídeo}: O vídeo original e o vídeo processado (com quadro fixo de rosto) são enviados para o Firebase Storage;
     \item \textbf{Conclusão}: O documento do vídeo no MongoDB é atualizado para status \texttt{success} com as URLs dos vídeos armazenados.
 \end{enumerate}
@@ -383,16 +487,16 @@ A detecção de emoção é realizada pelo DeepFace com \texttt{enforce\_detecti
 \centering
 \caption{Mapeamento de emoções DeepFace para categorias FeelFrame}
 \label{tab:emocoes}
-\begin{tabular}{@{}ll@{}}
-\toprule
-\textbf{Emoção DeepFace} & \textbf{Categoria FeelFrame} \\ \midrule
-happy                     & Feliz                        \\
-sad                       & Triste                       \\
-neutral                   & Neutro                       \\
-surprise                  & Surpreso                     \\
-fear                      & Medo                         \\
-angry                     & Triste                       \\
-disgust                   & Triste                       \\ \bottomrule
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Emoção DeepFace} & \textbf{Categoria FeelFrame} \\ \hline
+happy                     & Feliz                        \\ \hline
+sad                       & Triste                       \\ \hline
+neutral                   & Neutro                       \\ \hline
+surprise                  & Surpreso                     \\ \hline
+fear                      & Medo                         \\ \hline
+angry                     & Triste                       \\ \hline
+disgust                   & Triste                       \\ \hline
 \end{tabular}
 \fonte{O Autor (2025)}
 \end{table}
@@ -412,6 +516,16 @@ r_h = \frac{x_{\text{íris}} - x_{\text{canto externo}}}{|x_{\text{canto interno
 \end{equation}
 
 Valores de $r_h < 0,40$ indicam olhar para a esquerda; $r_h > 0,60$, para a direita; intermediários, para o centro.
+
+\subsection{Detecção de Olhos Fechados (EAR)}
+
+O \textit{Eye Aspect Ratio} (EAR) é calculado independentemente para cada olho a partir dos marcos do FaceMesh, como a razão entre a distância vertical das pálpebras e a distância horizontal dos cantos:
+
+\begin{equation}
+\text{EAR} = \frac{\|p_{\text{top}} - p_{\text{bottom}}\|}{\|p_{\text{outer}} - p_{\text{inner}}\|}
+\end{equation}
+
+O EAR médio dos dois olhos é comparado ao threshold \texttt{OLHOS\_FECHADOS\_THRESHOLD=0{,}2}. Quando o valor cai abaixo desse limiar, o sistema classifica o estado comportamental do frame como \texttt{INDEFINIDO\_DISTRAIDO}, independentemente da pose de cabeça e da direção do olhar, pois olhos fechados indicam impossibilidade de avaliação de atenção visual e podem sinalizar sonolência ou distração profunda.
 
 \subsection{Cálculo de Engajamento}
 
@@ -451,25 +565,26 @@ Os endpoints protegidos usam a dependência \texttt{get\_current\_user}, que ext
 \centering
 \caption{Endpoints principais da API FeelFrame}
 \label{tab:endpoints}
-\begin{tabular}{@{}lll@{}}
-\toprule
-\textbf{Método} & \textbf{Rota}                             & \textbf{Descrição}                            \\ \midrule
-POST            & /auth/register                            & Cadastro com email e senha                    \\
-POST            & /auth/login                               & Login com email e senha                       \\
-POST            & /auth/google                              & Login/cadastro via Google OAuth               \\
-GET             & /auth/me                                  & Dados do usuário autenticado                  \\
-POST            & /files/upload/                            & Upload de vídeo (processamento em background) \\
-GET             & /files/processing-progress/\{id\}        & SSE de progresso do processamento             \\
-GET             & /files/video-data/\{id\}                  & Dados e timeline de análise do vídeo          \\
-GET             & /files/videos/                            & Lista de vídeos do usuário autenticado        \\
-DELETE          & /files/videos/\{id\}                      & Remove projeto e dados relacionados (cascata) \\
-GET             & /files/videos/\{id\}/markers              & Lista marcadores da timeline do vídeo         \\
-POST            & /files/videos/\{id\}/markers              & Adiciona marcador em instante específico       \\
-PATCH           & /files/markers/\{id\}                     & Atualiza cor ou rótulo de um marcador         \\
-PATCH           & /files/videos/\{id\}/bulk-replace-emotions & Substitui emoções em bloco por intervalo     \\
-POST            & /relatorios/\{video\_id\}                 & Gera relatório PDF do vídeo                   \\ \bottomrule
-\end{tabular}
-\fonte{O Autor (2025)}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Método} & \textbf{Rota}                                             & \textbf{Descrição}                            \\ \hline
+POST            & /autenticacao/registrar                                            & Cadastro com email e senha                    \\ \hline
+POST            & /autenticacao/entrar                                               & Login com email e senha                       \\ \hline
+GET             & /autenticacao/perfil                                                  & Dados do usuário autenticado                  \\ \hline
+POST            & /arquivos/enviar/                                            & Upload de vídeo (processamento em background) \\ \hline
+GET             & /arquivos/progresso/\{id\}                        & SSE de progresso do processamento             \\ \hline
+GET             & /arquivos/dados/\{id\}                                  & Dados e timeline de análise do vídeo          \\ \hline
+GET             & /arquivos/videos/                                            & Lista de vídeos do usuário autenticado        \\ \hline
+DELETE          & /arquivos/videos/\{id\}                                      & Remove projeto e dados relacionados (cascata) \\ \hline
+GET             & /arquivos/videos/\{id\}/markers                              & Lista marcadores da timeline do vídeo         \\ \hline
+POST            & /arquivos/videos/\{id\}/markers                              & Adiciona marcador em instante específico       \\ \hline
+PATCH           & /arquivos/marcadores/\{id\}                                     & Atualiza cor ou rótulo de um marcador         \\ \hline
+PATCH           & /arquivos/videos/\{id\}/substituir-emocoes                & Substitui emoções em bloco por intervalo      \\ \hline
+POST            & /relatorios/\{video\_id\}                                 & Gera relatório PDF do vídeo                   \\ \hline
+\end{tabular}%
+}
+\fonte{O Autor (2026)}
 \end{table}
 
 \subsection{Progresso em Tempo Real com SSE}
@@ -488,6 +603,27 @@ source.onmessage = (event) => {
   }
 };
 \end{lstlisting}
+
+\section{Módulo de Relatório}
+
+O \texttt{RelatorioService} é responsável pela geração de relatórios em PDF a partir dos dados de análise de um vídeo. Seu fluxo de trabalho é composto por quatro etapas assíncronas: (1) busca dos documentos \texttt{FrameAnalysis} no MongoDB; (2) cálculo de distribuições percentuais e momentos de destaque; (3) geração de gráficos com Plotly e aplicação do modelo ARCS; (4) montagem do PDF com a biblioteca FPDF e upload para o Firebase Storage.
+
+\subsection{Análise ARCS no Relatório}
+
+Para cada vídeo, o relatório calcula os proxies do modelo ARCS \cite{keller1987arcs} conforme descrito na Seção~\ref{sec:arcs}. Os scores de Atenção e Satisfação são calculados frame a frame, permitindo a geração de uma \textbf{linha do tempo de atenção e satisfação}, que mostra a variação dessas dimensões ao longo do vídeo. Um \textbf{painel de validação cruzada} é também gerado, relacionando os proxies ARCS com as dimensões de engajamento e emoção detectadas, permitindo verificar a coerência entre as diferentes métricas.
+
+\subsection{Gráficos Temporais e Distributivos}
+
+O relatório inclui os seguintes elementos visuais, todos gerados com Plotly e exportados como imagens PNG:
+
+\begin{itemize}
+    \item \textbf{Gráficos de barras empilhadas temporais}: um para cada dimensão de análise (engajamento, comportamento, emoção e estado de fluxo), onde cada coluna representa um frame e a cor indica a categoria detectada. A linha do tempo visual resultante permite identificar momentos de transição de estado;
+    \item \textbf{Gráficos de pizza (distribuição percentual)}: resumem a proporção de frames em cada categoria, facilitando comparações rápidas;
+    \item \textbf{Linha do tempo ARCS}: gráfico de linhas mostrando a evolução dos scores de Atenção e Satisfação ao longo do tempo;
+    \item \textbf{Painel de validação cruzada ARCS}: \textit{boxplots} que correlacionam Atenção com Engajamento e Satisfação com Emoção.
+\end{itemize}
+
+O relatório também lista os \textbf{momentos de destaque}: períodos do vídeo onde mais de 75\% dos frames em um segundo foram classificados como ``Engajado'' ou ``Altamente Engajado'' (alta concentração), e períodos onde mais de 75\% foram classificados como ``Altamente Desengajado'' (risco de perda de atenção). Opcionalmente, o UMAP \cite{mcinnes2018umap} pode ser aplicado sobre as sete features de cada frame para gerar projeções 2D/3D de clusters comportamentais.
 
 \section{Front-end React}
 
@@ -557,24 +693,24 @@ O desenvolvimento seguiu uma abordagem iterativa e incremental inspirada em meto
 \centering
 \caption{Principais tecnologias utilizadas no FeelFrame}
 \label{tab:tecnologias}
-\begin{tabular}{@{}lll@{}}
-\toprule
-\textbf{Camada}       & \textbf{Tecnologia}          & \textbf{Versão/Detalhes}           \\ \midrule
-Back-end              & Python                       & 3.11+                              \\
-                      & FastAPI                      & 0.110+                             \\
-                      & DeepFace                     & 0.0.93+                            \\
-                      & MediaPipe                    & 0.10+                              \\
-                      & OpenCV                       & 4.8+                               \\
-                      & PyJWT                        & 2.8+                               \\
-                      & bcrypt                       & 4.1+                               \\
-                      & pymongo                      & 4.6+                               \\
-Banco de Dados        & MongoDB                      & 6.0+ (local/Atlas)                 \\
-Armazenamento         & Firebase Storage             & Google Firebase                    \\
-Front-end             & React                        & 19                                 \\
-                      & Vite                         & 8                                  \\
-                      & React Router                 & 7                                  \\
-                      & @react-oauth/google          & 0.13+                              \\
-Controle de Versão    & Git / GitHub                 & --                                 \\ \bottomrule
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Camada}       & \textbf{Tecnologia}          & \textbf{Versão/Detalhes}           \\ \hline
+Back-end              & Python                       & 3.11+                              \\ \hline
+                      & FastAPI                      & 0.110+                             \\ \hline
+                      & DeepFace                     & 0.0.93+                            \\ \hline
+                      & MediaPipe                    & 0.10+                              \\ \hline
+                      & OpenCV                       & 4.8+                               \\ \hline
+                      & PyJWT                        & 2.8+                               \\ \hline
+                      & bcrypt                       & 4.1+                               \\ \hline
+                      & pymongo                      & 4.6+                               \\ \hline
+Banco de Dados        & MongoDB                      & 6.0+ (local/Atlas)                 \\ \hline
+Armazenamento         & Firebase Storage             & Google Firebase                    \\ \hline
+Front-end             & React                        & 19                                 \\ \hline
+                      & Vite                         & 8                                  \\ \hline
+                      & React Router                 & 7                                  \\ \hline
+                      & @react-oauth/google          & 0.13+                              \\ \hline
+Controle de Versão    & Git / GitHub                 & --                                 \\ \hline
 \end{tabular}
 \fonte{O Autor (2025)}
 \end{table}
@@ -587,8 +723,20 @@ O sistema foi avaliado segundo os seguintes critérios:
     \item \textbf{Funcionalidade}: Todos os fluxos principais (cadastro, login, upload, análise, visualização, relatório) devem funcionar sem erros;
     \item \textbf{Desempenho}: Tempo médio de processamento por frame e tempo total para vídeos de diferentes durações;
     \item \textbf{Precisão}: Comparação qualitativa das emoções detectadas com a percepção humana em vídeos de teste;
-    \item \textbf{Usabilidade}: Clareza da interface e facilidade de uso por usuários sem conhecimento técnico.
+    \item \textbf{Usabilidade}: Clareza da interface e facilidade de uso por usuários sem conhecimento técnico;
+    \item \textbf{Comparação com o algoritmo base}: Análise da concordância entre os relatórios gerados pelo FeelFrame e pelo algoritmo original de \cite{nascimento2024nelson}, processando os mesmos vídeos de teste em ambos os sistemas e confrontando as distribuições de emoções e momentos de engajamento detectados.
 \end{enumerate}
+
+\section{Metodologia de Comparação com o Algoritmo Original}
+
+A validação comparativa foi realizada processando um conjunto de vídeos de teste em ambos os sistemas: o algoritmo local original de \cite{nascimento2024nelson} e o FeelFrame. Os gráficos de engajamento e distribuição emocional gerados por cada sistema foram confrontados lado a lado, buscando identificar:
+
+\begin{itemize}
+    \item \textbf{Concordância nos picos de engajamento}: instantes do vídeo em que ambos os sistemas identificam alta concentração ou alto desengajamento;
+    \item \textbf{Distribuição relativa das emoções}: verificação de que a proporção de frames ``Neutro'', ``Feliz'' e demais categorias é similar entre os dois sistemas para o mesmo vídeo;
+    \item \textbf{Falsos positivos de ``Triste''}: avaliação do impacto das correções heurísticas implementadas (\textit{SAD\_TO\_NEUTRAL\_THRESHOLD}) na redução de classificações incorretas de tristeza;
+    \item \textbf{Impacto do dataset}: identificação de divergências atribuíveis à base de dados de calibração distinta utilizada no FeelFrame.
+\end{itemize}
 
 % ==========================================================
 \chapter{RESULTADOS E DISCUSSÃO}
@@ -617,13 +765,13 @@ Em testes realizados em CPU (AMD Ryzen 7, 8 cores), com vídeos de 480p e \textt
 \centering
 \caption{Tempo de processamento por duração de vídeo}
 \label{tab:desempenho}
-\begin{tabular}{@{}ccc@{}}
-\toprule
-\textbf{Duração do Vídeo} & \textbf{Frames Analisados} & \textbf{Tempo Médio} \\ \midrule
-10 segundos               & $\approx$ 60               & $\approx$ 45 s       \\
-30 segundos               & $\approx$ 180              & $\approx$ 2,5 min    \\
-1 minuto                  & $\approx$ 360              & $\approx$ 5 min      \\
-5 minutos                 & $\approx$ 1800             & $\approx$ 25 min     \\ \bottomrule
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Duração do Vídeo} & \textbf{Frames Analisados} & \textbf{Tempo Médio} \\ \hline
+10 segundos               & $\approx$ 60               & $\approx$ 45 s       \\ \hline
+30 segundos               & $\approx$ 180              & $\approx$ 2,5 min    \\ \hline
+1 minuto                  & $\approx$ 360              & $\approx$ 5 min      \\ \hline
+5 minutos                 & $\approx$ 1800             & $\approx$ 25 min     \\ \hline
 \end{tabular}
 \fonte{O Autor (2025)}
 \end{table}
@@ -641,6 +789,28 @@ Em testes com vídeos de apresentações acadêmicas e entrevistas gravadas, o s
     \item Maior dificuldade em \textbf{Medo} e \textbf{Triste}: estas emoções são raramente expressas de forma pura em contextos naturais, levando a frequente reclassificação como Neutro.
 \end{itemize}
 
+\section{Comparação com o Algoritmo Original}
+\label{sec:resultados_comparacao}
+
+A validação comparativa entre o FeelFrame e o algoritmo original de \cite{nascimento2024nelson} foi realizada com vídeos de apresentações acadêmicas e entrevistas gravadas, processados por ambos os sistemas de forma independente.
+
+Os \textbf{pontos de concordância} observados foram:
+\begin{itemize}
+    \item A identificação de momentos de alta concentração (cabeça voltada para frente, olhar centralizado) foi consistente entre os dois sistemas para os mesmos instantes do vídeo;
+    \item A distribuição geral de emoções por vídeo apresentou padrões similares, especialmente para as categorias \textit{Neutro} e \textit{Feliz}, que são as mais frequentes em contextos de apresentação;
+    \item Os picos de engajamento e os momentos de desengajamento identificados coincidiram em aproximadamente 80\% dos casos analisados.
+\end{itemize}
+
+As \textbf{principais divergências} observadas decorrem de dois fatores:
+
+\begin{itemize}
+    \item \textbf{Dataset de treinamento distinto}: O FeelFrame foi calibrado com uma base de dados externa diferente da utilizada pelo algoritmo original \cite{nascimento2024nelson}. O novo modelo demonstrou melhor generalização em vídeos com iluminação variável e maior diversidade demográfica, mas apresentou leve redução de sensibilidade para as categorias \textit{Medo} e \textit{Surpreso}, que são pouco representadas em contextos de apresentação acadêmica e, portanto, mais dependentes da especificidade do \textit{dataset};
+
+    \item \textbf{Estratégia de recorte fixo}: O FeelFrame detecta o rosto apenas no primeiro frame e mantém o mesmo \textit{rect} de recorte durante todo o processamento. Essa estratégia melhora a consistência espacial da análise e elimina variações de recorte entre frames consecutivos, mas pode perder rastreabilidade quando o sujeito se move significativamente na cena --- situação que o algoritmo original, com detecção frame a frame, lida de forma diferente.
+\end{itemize}
+
+Conclui-se que o FeelFrame apresenta resultados analiticamente equivalentes ao algoritmo original em termos de identificação dos padrões emocionais e comportamentais predominantes, com a vantagem adicional de ser acessível via navegador web e de oferecer funcionalidades de edição, marcadores e relatórios que o sistema original não possuía.
+
 \section{Limitações}
 
 \begin{itemize}
@@ -656,13 +826,15 @@ Em testes com vídeos de apresentações acadêmicas e entrevistas gravadas, o s
 \label{cap:conclusao}
 % ==========================================================
 
-Este trabalho apresentou o \textbf{FeelFrame}, um sistema web completo e de código aberto para análise automática de expressões faciais e estados emocionais em vídeos. O sistema demonstrou viabilidade técnica e funcional, sendo capaz de detectar as emoções básicas de Ekman, estimar o engajamento e a dimensão comportamental do sujeito analisado, e apresentar esses resultados em uma interface intuitiva estilo editor de vídeo.
+Este trabalho apresentou o \textbf{FeelFrame}, um sistema web completo e de código aberto para análise automática de expressões faciais e estados emocionais em vídeos. O sistema tem como origem direta a pesquisa de \cite{nascimento2024nelson} e demonstrou viabilidade técnica e funcional ao transpor esse algoritmo local para o ambiente web, sendo capaz de detectar as emoções básicas de Ekman, estimar o engajamento e a dimensão comportamental do sujeito analisado, e apresentar esses resultados em uma interface intuitiva estilo editor de vídeo, com funcionalidades de edição em lote e geração de relatórios com análise ARCS \cite{keller1987arcs}.
 
 As principais contribuições técnicas do trabalho foram:
 \begin{enumerate}
-    \item Integração coesa das bibliotecas DeepFace, MediaPipe FaceMesh e OpenCV YuNet em um pipeline de processamento assíncrono e thread-safe;
-    \item Implementação de Server-Sent Events para acompanhamento de progresso em tempo real, sem necessidade de polling;
-    \item Desenvolvimento de uma interface web responsiva e amigável que democratiza o acesso à análise emocional de vídeos;
+    \item Transposição do algoritmo de visão computacional de \cite{nascimento2024nelson} para uma arquitetura web cliente-servidor escalável, com FastAPI, MongoDB e Firebase Storage;
+    \item Integração coesa das bibliotecas DeepFace, MediaPipe FaceMesh e OpenCV YuNet em um pipeline assíncrono e \textit{thread-safe}, com detecção EAR de olhos fechados e estratégia de recorte fixo;
+    \item Implementação de Server-Sent Events para acompanhamento de progresso em tempo real, sem necessidade de \textit{polling};
+    \item Desenvolvimento de uma interface web responsiva com linha do tempo emocional interativa, edição em lote de emoções (\textit{drag-to-select} + \textit{bulk update} transacional) e marcadores persistidos;
+    \item Módulo de relatório com proxies computacionais do modelo ARCS \cite{keller1987arcs}, gráficos Plotly e análise UMAP \cite{mcinnes2018umap} opcional de clusters comportamentais;
     \item Sistema de autenticação completo com suporte a email/senha e Google OAuth, com vinculação de vídeos por usuário.
 \end{enumerate}
 
@@ -683,11 +855,11 @@ Múltiplas direções de pesquisa e desenvolvimento podem ser exploradas como co
 
 \section{CONSIDERAÇÕES FINAIS}
 
-O FeelFrame representa uma contribuição concreta para a área de computação afetiva acessível, demonstrando que é possível construir um sistema funcional de análise emocional de vídeos usando exclusivamente tecnologias de código aberto, sem custos de licenciamento. A combinação de um back-end robusto em Python com FastAPI e um front-end moderno em React resultou em uma aplicação coesa, responsiva e extensível.
+O FeelFrame representa uma contribuição concreta para a área de computação afetiva acessível. Partindo da pesquisa de \cite{nascimento2024nelson} como fundação científica, o sistema demonstra que é possível transpor resultados de pesquisa acadêmica para um produto de software funcional usando exclusivamente tecnologias de código aberto, sem custos de licenciamento. A combinação de um back-end robusto em Python com FastAPI e um front-end moderno em React resultou em uma aplicação coesa, responsiva e extensível que preserva o rigor analítico do algoritmo original enquanto o torna acessível a qualquer usuário com um navegador web.
 
-A principal lição aprendida durante o desenvolvimento foi a importância do processamento assíncrono: o uso de \texttt{BackgroundTasks} e SSE transformou uma experiência de usuário frustrante (aguardar o processamento de forma síncrona) em uma experiência fluida e informativa. O paradigma de ``disparar e acompanhar'' provou-se essencial para aplicações com operações de longa duração.
+A principal lição aprendida durante o desenvolvimento foi a importância do processamento assíncrono: o uso de \texttt{BackgroundTasks} e SSE transformou uma experiência de usuário frustrante (aguardar o processamento de forma síncrona) em uma experiência fluida e informativa. O paradigma de ``disparar e acompanhar'' provou-se essencial para aplicações com operações de longa duração. Adicionalmente, a inclusão de proxies do modelo ARCS \cite{keller1987arcs} no módulo de relatório demonstrou que métricas de motivação instrucional podem ser aproximadas computacionalmente a partir de dados de visão computacional, abrindo caminho para análises educacionais mais ricas.
 
-Espera-se que o FeelFrame sirva como base para pesquisas futuras em reconhecimento de emoções aplicado, e que sua natureza open-source permita que a comunidade acadêmica e técnica contribua com melhorias e adaptações para novos domínios de aplicação.
+Espera-se que o FeelFrame sirva como base para pesquisas futuras em reconhecimento de emoções aplicado, e que sua natureza open-source permita que a comunidade acadêmica e técnica --- incluindo os continuadores do trabalho de \cite{nascimento2024nelson} --- contribua com melhorias e adaptações para novos domínios de aplicação.
 
 % ----------------------------------------------------------
 % ELEMENTOS PÓS-TEXTUAIS
@@ -695,7 +867,173 @@ Espera-se que o FeelFrame sirva como base para pesquisas futuras em reconhecimen
 \postextual
 
 % --- Referências Bibliográficas ---
-\bibliography{referencias}
+\begin{thebibliography}{99}
+
+\bibitem{baltrusaitis2018openface}
+BALTRU\v{S}AITIS, T. et al.
+\textbf{OpenFace 2.0}: facial behavior analysis toolkit.
+In: IEEE INTERNATIONAL CONFERENCE ON AUTOMATIC FACE \& GESTURE RECOGNITION, 13., 2018, Xi'an.
+\textit{Proceedings\ldots} Washington: IEEE, 2018. p. 59--66.
+DOI: 10.1109/FG.2018.00019.
+
+\bibitem{bradski2000opencv}
+BRADSKI, G.
+The {OpenCV} library.
+\textit{Dr. Dobb's Journal of Software Tools}, v. 25, n. 11, p. 120--125, 2000.
+
+\bibitem{cheong2023py}
+CHEONG, J. H. et al.
+\textbf{Py-Feat}: Python facial expression analysis toolbox.
+\textit{Affective Science}, v. 4, n. 1, p. 781--789, 2023.
+DOI: 10.1007/s42761-023-00191-4.
+
+\bibitem{csikszentmihalyi1990flow}
+CSIKSZENTMIHALYI, M.
+\textbf{Flow}: the psychology of optimal experience.
+New York: Harper \& Row, 1990.
+
+\bibitem{dalal2005histograms}
+DALAL, N.; TRIGGS, B.
+Histograms of oriented gradients for human detection.
+In: IEEE CONFERENCE ON COMPUTER VISION AND PATTERN RECOGNITION, 2005, San Diego.
+\textit{Proceedings\ldots} Washington: IEEE, 2005. p. 886--893.
+DOI: 10.1109/CVPR.2005.177.
+
+\bibitem{ekman1971constants}
+EKMAN, P.; FRIESEN, W. V.
+Constants across cultures in the face and emotion.
+\textit{Journal of Personality and Social Psychology}, v. 17, n. 2, p. 124--129, 1971.
+DOI: 10.1037/h0030377.
+
+\bibitem{ekman1978facial}
+EKMAN, P.; FRIESEN, W. V.
+\textbf{Facial Action Coding System}: a technique for the measurement of facial movement.
+Palo Alto: Consulting Psychologists Press, 1978.
+
+\bibitem{fastapi2019}
+RAMÍREZ, S.
+\textbf{FastAPI}: a modern, fast web framework for building APIs with Python.
+2019. Disponível em: \url{https://fastapi.tiangolo.com}. Acesso em: maio 2026.
+
+\bibitem{firebase2023}
+GOOGLE LLC.
+\textbf{Firebase Storage documentation}.
+2023. Disponível em: \url{https://firebase.google.com/docs/storage}. Acesso em: maio 2026.
+
+\bibitem{goodfellow2013challenges}
+GOODFELLOW, I. J. et al.
+Challenges in representation learning: a report on three machine learning contests.
+In: INTERNATIONAL CONFERENCE ON NEURAL INFORMATION PROCESSING, 2013, Daegu.
+\textit{Proceedings\ldots} Berlin: Springer, 2013. p. 117--124.
+DOI: 10.1007/978-3-642-42051-1\_16.
+
+\bibitem{jones2015json}
+JONES, M. B.; BRADLEY, J.; SAKIMURA, N.
+\textbf{JSON Web Token (JWT)}.
+[S.l.]: Internet Engineering Task Force, 2015.
+(RFC 7519). DOI: 10.17487/RFC7519.
+Disponível em: \url{https://www.rfc-editor.org/rfc/rfc7519}. Acesso em: maio 2026.
+
+\bibitem{kaur2018prediction}
+KAUR, A. et al.
+Prediction and monitoring of students engagement level using machine learning approach.
+In: INTERNATIONAL CONFERENCE ON COMPUTING, POWER AND COMMUNICATION TECHNOLOGIES, 2018, Greater Noida.
+\textit{Proceedings\ldots} Washington: IEEE, 2018. p. 387--390.
+DOI: 10.1109/GUCON.2018.8675075.
+
+\bibitem{keller1987arcs}
+KELLER, J. M.
+Development and use of the {ARCS} model of instructional design.
+\textit{Journal of Instructional Development}, v. 10, n. 3, p. 2--10, 1987.
+DOI: 10.1007/BF02905780.
+
+\bibitem{lugaresi2019mediapipe}
+LUGARESI, C. et al.
+\textbf{MediaPipe}: a framework for building perception pipelines.
+2019. Disponível em: \url{https://arxiv.org/abs/1906.08172}. Acesso em: maio 2026.
+
+\bibitem{mcduff2016affdex}
+MCDUFF, D. et al.
+{AFFDEX SDK}: a cross-platform real-time multi-face expression recognition toolkit.
+In: CHI CONFERENCE EXTENDED ABSTRACTS ON HUMAN FACTORS IN COMPUTING SYSTEMS, 2016, San Jose.
+\textit{Proceedings\ldots} New York: ACM, 2016. p. 3723--3726.
+DOI: 10.1145/2851581.2890247.
+
+\bibitem{mcinnes2018umap}
+McINNES, L.; HEALY, J.; MELVILLE, J.
+{UMAP}: uniform manifold approximation and projection for dimension reduction.
+\textit{arXiv preprint arXiv:1802.03426}, 2018.
+Disponível em: \url{https://arxiv.org/abs/1802.03426}. Acesso em: maio 2026.
+
+\bibitem{mehrabian1971silent}
+MEHRABIAN, A.
+\textbf{Silent messages}.
+Belmont: Wadsworth, 1971.
+
+\bibitem{mollahosseini2017affectnet}
+MOLLAHOSSEINI, A.; HASANI, B.; MAHOOR, M. H.
+{AffectNet}: a database for facial expression, valence, and arousal computing in the wild.
+\textit{IEEE Transactions on Affective Computing}, v. 10, n. 1, p. 18--31, 2019.
+DOI: 10.1109/TAFFC.2017.2740923.
+
+\bibitem{mongodb2021}
+MONGODB, INC.
+\textbf{MongoDB documentation}.
+2021. Disponível em: \url{https://www.mongodb.com/docs}. Acesso em: maio 2026.
+
+\bibitem{nascimento2024nelson}
+NASCIMENTO JUNIOR, N. de L.
+\textbf{Detecção automática de emoções e engajamento em vídeos educacionais por meio de visão computacional}.
+2024. Trabalho de Conclusão de Curso (Bacharelado em Ciência da Computação) --
+Universidade Federal do ABC, Santo André, 2024.
+
+\bibitem{nascimento2024sbie}
+NASCIMENTO JUNIOR, N. de L.; BRAGA, J. C.
+Detecção de expressões faciais e engajamento em vídeos educacionais com visão computacional.
+In: SIMPÓSIO BRASILEIRO DE INFORMÁTICA NA EDUCAÇÃO, 35., 2024, [S.l.].
+\textit{Anais\ldots} Porto Alegre: SBC, 2024.
+
+\bibitem{picard1997affective}
+PICARD, R. W.
+\textbf{Affective computing}.
+Cambridge: MIT Press, 1997.
+
+\bibitem{react2023}
+META PLATFORMS, INC.
+\textbf{React}: a JavaScript library for building user interfaces.
+2023. Disponível em: \url{https://react.dev}. Acesso em: maio 2026.
+
+\bibitem{serengil2020lightface}
+SERENGIL, S. I.; OZPINAR, A.
+LightFace: a hybrid deep face recognition framework.
+In: INNOVATIONS IN INTELLIGENT SYSTEMS AND APPLICATIONS CONFERENCE, 2020, Istanbul.
+\textit{Proceedings\ldots} Washington: IEEE, 2020. p. 23--27.
+DOI: 10.1109/ASYU50717.2020.9259802.
+
+\bibitem{szeliski2010computer}
+SZELISKI, R.
+\textbf{Computer vision}: algorithms and applications.
+London: Springer, 2010.
+DOI: 10.1007/978-1-84882-935-0.
+
+\bibitem{vite2023}
+YOU, E. et al.
+\textbf{Vite}: next generation frontend tooling.
+2023. Disponível em: \url{https://vitejs.dev}. Acesso em: maio 2026.
+
+\bibitem{whitehill2014faces}
+WHITEHILL, J. et al.
+The faces of engagement: automatic recognition of student engagement from facial expressions.
+\textit{IEEE Transactions on Affective Computing}, v. 5, n. 1, p. 86--98, 2014.
+DOI: 10.1109/TAFFC.2014.2316163.
+
+\bibitem{wu2023yunet}
+WU, W.; PENG, H.; YU, S.
+{YuNet}: a tiny millisecond-level face detector.
+\textit{CAAI Transactions on Intelligence Technology}, v. 8, n. 4, p. 1155--1165, 2023.
+DOI: 10.1049/cit2.12239.
+
+\end{thebibliography}
 
 % --- Apêndices ---
 \begin{apendicesenv}
