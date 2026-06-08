@@ -1,0 +1,208 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="feelframe-arch" name="FeelFrame Architecture">
+    <mxGraphModel dx="1488" dy="782" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontStyle=1;fontSize=20;fontColor=#333333;" value="FeelFrame — Diagrama de Arquitetura" vertex="1">
+          <mxGeometry height="40" width="700" x="550" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="swimlane;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;fontColor=#003399;whiteSpace=wrap;" value="Frontend — React 19 + Vite + React Router 7" vertex="1">
+          <mxGeometry height="520" width="580" x="20" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="LoginPage&#xa;(@react-oauth/google)" vertex="1">
+          <mxGeometry height="70" width="160" x="20" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="AuthContext&#xa;(JWT → localStorage)" vertex="1">
+          <mxGeometry height="70" width="160" x="200" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="ProtectedRoute" vertex="1">
+          <mxGeometry height="70" width="160" x="400" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="VideoEditor&#xa;(SSE progress, timeline,&#xa;markers, bulk replace)" vertex="1">
+          <mxGeometry height="90" width="160" x="200" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="authService.js" vertex="1">
+          <mxGeometry height="70" width="160" x="20" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="videoService.js" vertex="1">
+          <mxGeometry height="70" width="160" x="200" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="swimlane;startSize=40;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;fontColor=#006600;whiteSpace=wrap;" value="Backend — Python 3.11 + FastAPI (porta 8080)" vertex="1">
+          <mxGeometry height="770" width="1240" x="640" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="10" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" value="Rotas" vertex="1">
+          <mxGeometry height="400" width="320" x="20" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="11" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f0ff;strokeColor=#9673a6;fontSize=10;align=left;" value="/autenticacao&lt;br&gt;POST /registrar&lt;br&gt;POST /entrar&lt;br&gt;GET  /perfil" vertex="1">
+          <mxGeometry height="100" width="300" x="10" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="11" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f0ff;strokeColor=#9673a6;fontSize=9;align=left;" value="/arquivos&#xa;POST /enviar/    POST /enviar-multiplos/&#xa;GET  /progresso/:id  ← SSE&#xa;GET  /dados/:id&#xa;GET  /videos/   DELETE /videos/:id&#xa;GET|POST /videos/:id/marcadores&#xa;PATCH /marcadores/:id&#xa;PATCH /videos/:id/substituir-emocoes" vertex="1">
+          <mxGeometry height="160" width="300" x="10" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="11" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f0ff;strokeColor=#9673a6;fontSize=10;align=left;" value="/relatorios&#xa;GET /:video_id → PDF" vertex="1">
+          <mxGeometry height="60" width="300" x="10" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="10" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" value="Serviços" vertex="1">
+          <mxGeometry height="640" width="660" x="360" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#d6b656;fontSize=11;" value="authService.py&#xa;JWT (7 dias) + bcrypt" vertex="1">
+          <mxGeometry height="70" width="210" x="10" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#d6b656;fontSize=11;" value="userService.py&#xa;CRUD usuários" vertex="1">
+          <mxGeometry height="70" width="210" x="10" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#d6b656;fontSize=11;" value="videoService.py&#xa;orquestrador (BackgroundTasks)" vertex="1">
+          <mxGeometry height="70" width="210" x="10" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="19" parent="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="faceAnalyzer.py&#xa;─────────────────&#xa;YuNet → detecção rosto&#xa;MediaPipe FaceMesh (468 pontos)&#xa;DeepFace → emoção (CNN)&#xa;solvePnP → pose de cabeça&#xa;Íris tracking → direção olhar&#xa;─────────────────&#xa;Saída/frame:&#xa;emocao | dimensao_comportamental&#xa;estimativa_engajamento" vertex="1">
+          <mxGeometry height="300" width="210" x="10" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#d6b656;fontSize=11;" value="storageFactory.py" vertex="1">
+          <mxGeometry height="70" width="210" x="240" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#d6b656;fontSize=11;" value="firebaseStorageService.py" vertex="1">
+          <mxGeometry height="70" width="210" x="240" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#d6b656;fontSize=11;dashed=1;" value="localStorageService.py&#xa;(fallback)" vertex="1">
+          <mxGeometry height="70" width="210" x="240" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#d6b656;fontSize=11;" value="relatorioService.py&#xa;(matplotlib → PDF)" vertex="1">
+          <mxGeometry height="70" width="210" x="240" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="10" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;" value="Utilitários" vertex="1">
+          <mxGeometry height="190" width="320" x="20" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" value="DatabaseConfig.py&#xa;(MongoDB client)" vertex="1">
+          <mxGeometry height="120" width="140" x="10" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="26" parent="24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" value="auth_deps.py&#xa;(Bearer JWT&#xa;dependency)" vertex="1">
+          <mxGeometry height="120" width="140" x="165" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="be_models" parent="10" style="text;html=1;align=center;fontStyle=2;fontSize=10;fontColor=#666666;" value="Models: FrameAnalysis | VideoMetadata | User | StorageSource" vertex="1">
+          <mxGeometry height="30" width="600" x="20" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="27" parent="1" style="swimlane;startSize=40;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=13;fontColor=#990000;whiteSpace=wrap;" value="Serviços Externos" vertex="1">
+          <mxGeometry height="260" width="1860" x="20" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="28" parent="27" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" value="MongoDB&#xa;──────────────&#xa;videos&#xa;frame_analysis&#xa;markers&#xa;relatorios" vertex="1">
+          <mxGeometry height="170" width="180" x="50" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="29" parent="27" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" value="Firebase Storage&#xa;──────────────&#xa;Vídeos originais&#xa;Vídeos processados" vertex="1">
+          <mxGeometry height="170" width="180" x="840" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="BxRjPe_T-IoY4S8JdYS9-30" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;exitX=0.475;exitY=0.999;exitDx=0;exitDy=0;exitPerimeter=0;" target="3" value="HTTPS">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="414.0000000000002" y="77" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;" target="7">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="385" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;" target="8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;" target="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" target="12" value="POST /autenticacao/*">
+          <mxGeometry relative="1" x="-0.192" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="820" y="559" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" target="13" value="REST + SSE">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="345" y="465" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" target="14" value="GET /relatorios/:id">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="645" />
+              <mxPoint x="525" y="645" />
+              <mxPoint x="525" y="600" />
+              <mxPoint x="820" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;" target="16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;" target="17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;" target="18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;" target="23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;" target="19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;" target="20">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1115" y="407" />
+              <mxPoint x="1507" y="407" />
+              <mxPoint x="1507" y="275" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="20" style="edgeStyle=orthogonalEdgeStyle;" target="21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="20" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;" target="22" value="fallback">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;" target="25">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="752" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="1" source="23" style="edgeStyle=orthogonalEdgeStyle;" target="25">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1345" y="851" />
+              <mxPoint x="740" y="851" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e20" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;" target="25">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="844" y="445" />
+              <mxPoint x="844" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e21" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;" target="28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;" target="29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BxRjPe_T-IoY4S8JdYS9-30" parent="1" style="points=[];aspect=fixed;html=1;align=center;shadow=0;dashed=0;fillColor=#FF6A00;strokeColor=none;shape=mxgraph.alibaba_cloud.user;" value="" vertex="1">
+          <mxGeometry height="99" width="99" x="260.5" y="14" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
