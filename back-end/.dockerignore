@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Segredos — nunca devem entrar na imagem
+app/.env
+.env
+app/credentials/
+
+# Arquivos de desenvolvimento/relatório não usados em runtime
+validacao_cruzada_completa.html
+
+.git
+.gitignore
+Dockerfile
+.dockerignore

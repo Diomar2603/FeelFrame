@@ -3,3 +3,10 @@ __pycache__/
 venv/
 serviceAccountKey.json
 relatorio/referencias/
+
+# Segredos locais (JWT secret real, Mongo URI real, Client ID, etc.) —
+# use back-end/app/.env.example e front-end/app/.env.example como modelo.
+.env
+
+# Vídeos temporários gerados durante o processamento local
+temp_videos/

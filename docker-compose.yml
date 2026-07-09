@@ -1,0 +1,61 @@
+# Sobe a aplicação completa localmente em containers: MongoDB + back-end (FastAPI)
+# + front-end (build estático servido por nginx). Não é usado no deploy do
+# Cloud Run (lá cada imagem é implantada separadamente pelo GitHub Actions),
+# serve para testar os Dockerfiles antes de subir para o Google Cloud.
+#
+# Uso:
+#   docker compose up --build
+#   Front-end:  http://localhost:3000
+#   Back-end:   http://localhost:8080
+#
+# Por padrão usa STORAGE_BACKEND=local (grava vídeos num volume Docker em vez
+# de exigir credenciais do Firebase). Para testar com Firebase Storage local,
+# defina STORAGE_BACKEND=firebase e FIREBASE_STORAGE_BUCKET num arquivo .env
+# na raiz do projeto e garanta que back-end/app/credentials/serviceAccountKey.json
+# existe (ele é montado como volume somente-leitura abaixo).
+
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./back-end
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      MONGO_URI: mongodb://mongo:27017/
+      DB_NAME: feelFrame
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-troque-em-producao}
+      JWT_EXPIRE_HOURS: "168"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      LOCAL_STORAGE_PATH: /data/storage
+      FIREBASE_CREDENTIALS_PATH: app/credentials/serviceAccountKey.json
+      FIREBASE_STORAGE_BUCKET: ${FIREBASE_STORAGE_BUCKET:-}
+      VIDEO_POOL_WORKERS: "2"
+    volumes:
+      - ./back-end/app/credentials:/app/app/credentials:ro
+      - backend_storage:/data/storage
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./front-end/app
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+  backend_storage:
