@@ -535,18 +535,19 @@ class RelatorioService:
         """
         print(f"Iniciando a geração do relatório: {output_filename}...")
         image_files = []
+        run_tag = uuid.uuid4().hex
 
         try:
             if not analisys:
                 print("Lista de análise vazia.")
-                return
+                raise ValueError("Lista de análise vazia — não há dados para gerar o relatório.")
 
             total_frames       = len(analisys)
             dados_temporais    = self.gerar_dados_grafico_temporal(analisys)
 
             if not dados_temporais or not dados_temporais.get("frame_number"):
                 print("Dados temporais insuficientes.")
-                return
+                raise ValueError("Dados temporais insuficientes para gerar o relatório.")
 
             dados_distribuicao = self.calcular_distribuicao_percentual(analisys, total_frames)
             momentos_destaque  = self.analisar_concentracao(analisys)
@@ -602,35 +603,35 @@ class RelatorioService:
             fig_fluxo = _gerar_grafico_barras_temporal(df_temporal, "estado_fluxo_str", "Fluxo Temporal")
 
             charts_to_export = [
-                (fig_eng,   "temp_spike_eng.png"),
-                (fig_comp,  "temp_spike_comp.png"),
-                (fig_emo,   "temp_spike_emo.png"),
-                (fig_fluxo, "temp_spike_fluxo.png"),
+                (fig_eng,   f"temp_spike_eng_{run_tag}.png"),
+                (fig_comp,  f"temp_spike_comp_{run_tag}.png"),
+                (fig_emo,   f"temp_spike_emo_{run_tag}.png"),
+                (fig_fluxo, f"temp_spike_fluxo_{run_tag}.png"),
             ]
 
             if not df_eng_pie.empty:
                 charts_to_export.append((
                     px.pie(df_eng_pie, names='Categoria', values='Percentual',
                            title='Engajamento %', color='Categoria', color_discrete_map=MAPA_CORES),
-                    "temp_pie_eng.png"
+                    f"temp_pie_eng_{run_tag}.png"
                 ))
             if not df_comp_pie.empty:
                 charts_to_export.append((
                     px.pie(df_comp_pie, names='Categoria', values='Percentual',
                            title='Comportamento %', color='Categoria', color_discrete_map=MAPA_CORES),
-                    "temp_pie_comp.png"
+                    f"temp_pie_comp_{run_tag}.png"
                 ))
             if not df_emo_pie.empty:
                 charts_to_export.append((
                     px.pie(df_emo_pie, names='Categoria', values='Percentual',
                            title='Emoção %', color='Categoria', color_discrete_map=MAPA_CORES),
-                    "temp_pie_emo.png"
+                    f"temp_pie_emo_{run_tag}.png"
                 ))
             if not df_fluxo_pie.empty:
                 charts_to_export.append((
                     px.pie(df_fluxo_pie, names='Categoria', values='Percentual',
                            title='Fluxo %', color='Categoria', color_discrete_map=MAPA_CORES),
-                    "temp_pie_fluxo.png"
+                    f"temp_pie_fluxo_{run_tag}.png"
                 ))
 
             print("Gerando análises ARCS e timeline de atenção...")
@@ -640,11 +641,11 @@ class RelatorioService:
 
                 charts_to_export.append((
                     self.gerar_grafico_timeline_atencao(df_processado, video_id),
-                    "temp_arcs_timeline.png"
+                    f"temp_arcs_timeline_{run_tag}.png"
                 ))
                 charts_to_export.append((
                     self.gerar_painel_validacao_cruzada(df_processado),
-                    "temp_arcs_validacao.png"
+                    f"temp_arcs_validacao_{run_tag}.png"
                 ))
             except Exception as e_arcs:
                 print(f"[AVISO] Análise ARCS falhou (será omitida do PDF): {e_arcs}")
@@ -703,6 +704,7 @@ class RelatorioService:
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 14)
                     titulo_graf = (img_file.replace("temp_", "")
+                                           .replace(f"_{run_tag}.png", "")
                                            .replace(".png", "")
                                            .replace("_", " ")
                                            .title())
@@ -714,6 +716,7 @@ class RelatorioService:
 
         except Exception as e:
             print(f"ERRO GERAL PDF: {e}")
+            raise
 
         finally:
             for f in image_files:

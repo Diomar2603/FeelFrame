@@ -29,7 +29,9 @@ MUDANÇAS PRINCIPAIS vs versão original:
 """
 
 import os
+import shutil
 import asyncio
+import subprocess
 import cv2 as cv
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -275,38 +277,60 @@ class VideoService:
             return f"feelframe/users/{user_id}/{base}"
         return f"feelframe/{base}"
 
-    # Codecs candidatos, em ordem de preferência, para o container .mp4.
-    # O build "headless" do OpenCV usado no Linux não expõe necessariamente
-    # os mesmos encoders FFMPEG disponíveis no Windows durante o dev local —
-    # por isso testamos vários fourccs em vez de assumir que "mp4v" funciona.
-    _VIDEO_FOURCC_CANDIDATES = ("mp4v", "avc1", "H264", "MJPG")
-
     def _open_video_writer(self, output_path: str, fps: float,
                            width: int, height: int) -> cv.VideoWriter:
         """
-        Abre um cv.VideoWriter tentando múltiplos codecs até encontrar um
-        suportado pelo FFMPEG do ambiente atual. Lança RuntimeError com uma
-        mensagem clara se nenhum codec funcionar, em vez de deixar o loop de
-        frames escrever silenciosamente em um writer fechado (o que resulta
-        em um arquivo de saída inexistente e um erro confuso no upload).
-        """
-        last_error = None
-        for codec in self._VIDEO_FOURCC_CANDIDATES:
-            try:
-                fourcc = cv.VideoWriter_fourcc(*codec)
-                writer = cv.VideoWriter(output_path, fourcc, fps, (width, height))
-                if writer.isOpened():
-                    return writer
-                writer.release()
-            except Exception as e:
-                last_error = e
+        Abre um cv.VideoWriter usando MJPG em container .avi.
 
-        raise RuntimeError(
-            f"Não foi possível inicializar o VideoWriter em '{output_path}' "
-            f"com nenhum dos codecs suportados ({', '.join(self._VIDEO_FOURCC_CANDIDATES)}). "
-            f"Verifique se o FFMPEG do ambiente possui os encoders necessários."
-            + (f" Último erro: {last_error}" if last_error else "")
+        MJPG é o único codec que o plugin FFMPEG embutido no wheel do OpenCV
+        suporta de forma consistente para escrita em ambos Windows e Linux —
+        codecs como "mp4v"/"avc1"/"H264" podem reportar `isOpened() == True`
+        mas gravar um stream inválido quando o encoder real (ex.: libx264)
+        não está presente no build do OpenCV, resultando em vídeo corrompido.
+        O container final .mp4 é gerado depois via transcodificação com o
+        FFMPEG do sistema (`_transcode_to_mp4`), que tem suporte completo a
+        encoders.
+        """
+        fourcc = cv.VideoWriter_fourcc(*"MJPG")
+        writer = cv.VideoWriter(output_path, fourcc, fps, (width, height))
+        if not writer.isOpened():
+            writer.release()
+            raise RuntimeError(
+                f"Não foi possível inicializar o VideoWriter (MJPG/AVI) em '{output_path}'."
+            )
+        return writer
+
+    def _transcode_to_mp4(self, source_path: str, dest_path: str) -> None:
+        """
+        Reencoda `source_path` (MJPG/AVI) para `dest_path` (H.264/MP4) usando
+        o binário `ffmpeg` do sistema — não o plugin FFMPEG embutido no
+        OpenCV, que é limitado e não confiável para encoding em produção.
+        `-movflags +faststart` garante que o MP4 seja reproduzível em
+        streaming (moov atom no início do arquivo).
+        """
+        if shutil.which("ffmpeg") is None:
+            raise RuntimeError(
+                "Binário 'ffmpeg' não encontrado no sistema — necessário para "
+                "gerar o vídeo processado em MP4."
+            )
+
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", source_path,
+                "-c:v", "libx264",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+                dest_path,
+            ],
+            capture_output=True,
+            text=True,
         )
+        if result.returncode != 0 or not os.path.exists(dest_path):
+            raise RuntimeError(
+                f"Falha ao transcodificar vídeo para MP4 (ffmpeg exit "
+                f"{result.returncode}): {result.stderr[-2000:]}"
+            )
 
     def _process_video_sync(self, original_file_location: str,
                             video_id: str,
@@ -322,6 +346,7 @@ class VideoService:
         """
         cap = out = None
         output_file_location = ""
+        intermediate_avi_location = ""
         analysis_results_list: list = []
         frames_destaque_info: list  = []
         fixed_crop_rect             = None
@@ -379,9 +404,10 @@ class VideoService:
             if not output_filename.lower().endswith((".mp4", ".avi", ".mov")):
                 output_filename += ".mp4"
             output_file_location = os.path.join(self.fixed_frame_videos_dir, output_filename)
+            intermediate_avi_location = os.path.splitext(output_file_location)[0] + ".tmp.avi"
 
             out = self._open_video_writer(
-                output_file_location, fps, self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT
+                intermediate_avi_location, fps, self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT
             )
 
             input_frame_count = output_frame_count = 0
@@ -466,6 +492,11 @@ class VideoService:
             cap.release();  out.release()
             cap = out = None
 
+            # Reencoda MJPG/AVI -> H.264/MP4 com o ffmpeg do sistema antes do upload.
+            self._update_progress(video_id, 82, "Finalizando codificação do vídeo...")
+            self._transcode_to_mp4(intermediate_avi_location, output_file_location)
+            self._cleanup_local_files(intermediate_avi_location)
+
             # Upload do vídeo processado
             self._update_progress(video_id, 85, "Enviando vídeo processado para a nuvem...")
             processed_cloud = self.storage.upload_video(
@@ -511,6 +542,7 @@ class VideoService:
 
         except Exception:
             # Re-lança para que o Future propagule o erro ao chamador assíncrono.
+            self._cleanup_local_files(intermediate_avi_location)
             raise
 
         finally:

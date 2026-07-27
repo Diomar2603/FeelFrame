@@ -54,26 +54,26 @@ async def gerar_relatorio_por_video(
     Se o vídeo não for encontrado, retorna um erro 404.
     """
     
-    # 1. Buscar os dados do banco
+    # 1. Buscar os dados do banco (thread — não bloqueia a event loop)
     print(f"Iniciando relatório para: {video_id}")
-    lista_analises = relatorio_service_instance.buscar_frames_do_banco_de_dados(video_id)
-    
+    lista_analises = await relatorio_service_instance.buscar_frames_do_banco_async(video_id)
+
     # 2. Verificar se os dados foram encontrados
     if not lista_analises:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail=f"Nenhum dado de análise encontrado para o video_id: {video_id}"
         )
-    
+
     # 4. Definir um nome de arquivo temporário único (no servidor)
     temp_filename = f"temp_report_{uuid.uuid4()}.pdf"
-    
-    # 5. Gerar o PDF
+
+    # 5. Gerar o PDF (thread — CPU/I/O intensivo, não pode rodar direto na event loop)
     try:
-        relatorio_service_instance.gerar_relatorio_pdf(temp_filename, lista_analises, video_id)
+        await relatorio_service_instance.gerar_relatorio_pdf_async(temp_filename, lista_analises, video_id)
     except Exception as e:
         # Se a geração do PDF falhar, limpa o arquivo (se existir)
-        _cleanup_file(temp_filename)
+        await _cleanup_file(temp_filename)
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao gerar o arquivo PDF: {e}"
