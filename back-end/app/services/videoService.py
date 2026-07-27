@@ -347,7 +347,7 @@ class VideoService:
                 output_filename += ".mp4"
             output_file_location = os.path.join(self.fixed_frame_videos_dir, output_filename)
 
-            fourcc = cv.VideoWriter_fourcc(*"avc1")
+            fourcc = cv.VideoWriter_fourcc(*"mp4v")
             out    = cv.VideoWriter(output_file_location, fourcc, fps,
                                     (self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT))
 
