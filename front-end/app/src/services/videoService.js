@@ -139,7 +139,7 @@ class VideoService {
   async generateReport(videoId) {
     try {
       const res = await fetch(`${API_BASE_URL}/relatorios/${videoId}`, {
-        method: 'POST',
+        method: 'GET',
         headers: authHeader(),
       });
       if (!res.ok) throw new Error('Erro ao gerar relatório');

@@ -344,10 +344,10 @@ class VideoService:
             safe_original_filename = os.path.basename(original_file_location)
             output_filename = f"quadro_fixo_{safe_original_filename}"
             if not output_filename.lower().endswith((".mp4", ".avi", ".mov")):
-                output_filename += ".mp4"
+                output_filename += ".webm"
             output_file_location = os.path.join(self.fixed_frame_videos_dir, output_filename)
 
-            fourcc = cv.VideoWriter_fourcc(*"mp4v")
+            fourcc = cv.VideoWriter_fourcc(*"vp08")
             out    = cv.VideoWriter(output_file_location, fourcc, fps,
                                     (self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT))
 
