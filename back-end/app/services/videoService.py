@@ -275,6 +275,39 @@ class VideoService:
             return f"feelframe/users/{user_id}/{base}"
         return f"feelframe/{base}"
 
+    # Codecs candidatos, em ordem de preferência, para o container .mp4.
+    # O build "headless" do OpenCV usado no Linux não expõe necessariamente
+    # os mesmos encoders FFMPEG disponíveis no Windows durante o dev local —
+    # por isso testamos vários fourccs em vez de assumir que "mp4v" funciona.
+    _VIDEO_FOURCC_CANDIDATES = ("mp4v", "avc1", "H264", "MJPG")
+
+    def _open_video_writer(self, output_path: str, fps: float,
+                           width: int, height: int) -> cv.VideoWriter:
+        """
+        Abre um cv.VideoWriter tentando múltiplos codecs até encontrar um
+        suportado pelo FFMPEG do ambiente atual. Lança RuntimeError com uma
+        mensagem clara se nenhum codec funcionar, em vez de deixar o loop de
+        frames escrever silenciosamente em um writer fechado (o que resulta
+        em um arquivo de saída inexistente e um erro confuso no upload).
+        """
+        last_error = None
+        for codec in self._VIDEO_FOURCC_CANDIDATES:
+            try:
+                fourcc = cv.VideoWriter_fourcc(*codec)
+                writer = cv.VideoWriter(output_path, fourcc, fps, (width, height))
+                if writer.isOpened():
+                    return writer
+                writer.release()
+            except Exception as e:
+                last_error = e
+
+        raise RuntimeError(
+            f"Não foi possível inicializar o VideoWriter em '{output_path}' "
+            f"com nenhum dos codecs suportados ({', '.join(self._VIDEO_FOURCC_CANDIDATES)}). "
+            f"Verifique se o FFMPEG do ambiente possui os encoders necessários."
+            + (f" Último erro: {last_error}" if last_error else "")
+        )
+
     def _process_video_sync(self, original_file_location: str,
                             video_id: str,
                             user_id: Optional[str] = None) -> Dict[str, Any]:
@@ -347,9 +380,9 @@ class VideoService:
                 output_filename += ".mp4"
             output_file_location = os.path.join(self.fixed_frame_videos_dir, output_filename)
 
-            fourcc = cv.VideoWriter_fourcc(*"mp4v")
-            out    = cv.VideoWriter(output_file_location, fourcc, fps,
-                                    (self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT))
+            out = self._open_video_writer(
+                output_file_location, fps, self.OUTPUT_WIDTH, self.OUTPUT_HEIGHT
+            )
 
             input_frame_count = output_frame_count = 0
             self._update_progress(video_id, 10, "Processando frames com análise máxima...")

@@ -64,7 +64,7 @@ iniconfig==2.3.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
 joblib==1.5.2
-kaleido==1.2.0
+kaleido==0.2.1
 keras==2.15.0
 kiwisolver==1.4.9
 lazy-model==0.3.0
@@ -90,8 +90,7 @@ numba==0.65.0
 numpy
 oauthlib==3.3.1
 omegaconf==2.3.0
-opencv-contrib-python
-opencv-python
+opencv-contrib-python-headless==4.10.0.84
 opt_einsum==3.4.0
 optree==0.17.0
 orjson==3.11.4
