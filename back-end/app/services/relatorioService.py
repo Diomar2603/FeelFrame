@@ -29,6 +29,7 @@ import os
 import math
 import asyncio
 import functools
+from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -63,6 +64,29 @@ class RelatorioService:
     # =========================================================================
     # MÉTODOS SÍNCRONOS ORIGINAIS (preservados para retrocompatibilidade)
     # =========================================================================
+
+    def cache_relatorio_valido(self, video_doc: Dict[str, Any]) -> bool:
+        """
+        Um relatório em cache só é válido se nenhuma emoção ou marcador do
+        vídeo foi alterado depois que ele foi gerado (`content_updated_at`
+        é atualizado por bulk_replace_emotions/add_video_marker/update_marker).
+        """
+        cache_url = video_doc.get("relatorio_cache_url")
+        cache_at  = video_doc.get("relatorio_cache_generated_at")
+        if not cache_url or not cache_at:
+            return False
+
+        content_at = video_doc.get("content_updated_at")
+        return (not content_at) or (content_at <= cache_at)
+
+    def salvar_cache_relatorio(self, video_id: str, url: str) -> None:
+        self.video_collection.update_one(
+            {"_id": video_id},
+            {"$set": {
+                "relatorio_cache_url":            url,
+                "relatorio_cache_generated_at":   datetime.now(timezone.utc).isoformat(),
+            }},
+        )
 
     def obter_nome_arquivo_video(self, video_id: str) -> str:
         """Busca o nome do arquivo de forma segura."""
@@ -339,6 +363,46 @@ class RelatorioService:
             "Indefinido": "#000000",
         }
 
+    _MARKER_DEFAULT_COLOR = "#f0a500"  # mesmo fallback usado no editor (App.jsx)
+
+    def _buscar_marcadores(self, video_id: str) -> List[Dict[str, Any]]:
+        return list(
+            self.db["markers"]
+            .find({"video_id": video_id}, {"_id": 0, "time": 1, "label": 1, "color": 1})
+            .sort("time", 1)
+        )
+
+    def _adicionar_marcadores_no_grafico(self, fig: go.Figure,
+                                         df_temporal: pd.DataFrame,
+                                         markers: List[Dict[str, Any]]) -> go.Figure:
+        """
+        Sobrepõe uma linha vertical por marcador da timeline no gráfico
+        temporal, com o rótulo do marcador na legenda e a cor escolhida pelo
+        usuário no editor (mesmo fallback #f0a500 usado no front-end quando
+        o marcador não tem cor definida).
+        """
+        if df_temporal.empty or not markers:
+            return fig
+
+        for marker in markers:
+            marker_ms = marker.get("time", 0) * 1000
+            idx = (df_temporal["timestamp_ms"] - marker_ms).abs().idxmin()
+            x_pos = df_temporal.loc[idx, "frame_number"]
+            label = marker.get("label") or "Marcador"
+            color = marker.get("color") or self._MARKER_DEFAULT_COLOR
+
+            fig.add_trace(go.Scatter(
+                x=[x_pos, x_pos], y=[0, 1],
+                mode="lines",
+                line=dict(color=color, width=2, dash="dash"),
+                name=label,
+                legendgroup="marcadores",
+                showlegend=True,
+                hovertemplate=f"Marcador: {label}<extra></extra>",
+            ))
+
+        return fig
+
     def _adicionar_imagens_ao_pdf(self, pdf: FPDF,
                                   frames_destaque: List[Dict[str, Any]],
                                   tipo: str) -> None:
@@ -601,6 +665,10 @@ class RelatorioService:
 
             df_temporal["estado_fluxo_str"] = df_temporal["estado_fluxo"].astype(str)
             fig_fluxo = _gerar_grafico_barras_temporal(df_temporal, "estado_fluxo_str", "Fluxo Temporal")
+
+            marcadores = self._buscar_marcadores(video_id)
+            for fig_temporal in (fig_eng, fig_comp, fig_emo, fig_fluxo):
+                self._adicionar_marcadores_no_grafico(fig_temporal, df_temporal, marcadores)
 
             charts_to_export = [
                 (fig_eng,   f"temp_spike_eng_{run_tag}.png"),

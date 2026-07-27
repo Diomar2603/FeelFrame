@@ -1,11 +1,13 @@
 import os
 import uuid
+import requests
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, Response
 from dotenv import load_dotenv
 from app.services.relatorioService import (
         RelatorioService
     )
+from app.services.storageFactory import create_storage_service
 from app.utils.DatabaseConfig import DatabaseConfig
 
 router = APIRouter(prefix="/relatorios", tags=["Relatorios"])
@@ -54,46 +56,63 @@ async def gerar_relatorio_por_video(
     Se o vídeo não for encontrado, retorna um erro 404.
     """
     
-    # 1. Buscar os dados do banco (thread — não bloqueia a event loop)
     print(f"Iniciando relatório para: {video_id}")
-    lista_analises = await relatorio_service_instance.buscar_frames_do_banco_async(video_id)
 
-    # 2. Verificar se os dados foram encontrados
+    video_doc = relatorio_service_instance.video_collection.find_one({"_id": video_id})
+    if video_doc is None:
+        raise HTTPException(status_code=404, detail=f"Vídeo '{video_id}' não encontrado.")
+
+    nome_video = video_doc.get("original_filename", f"video_{video_id}")
+    nome_base, _ = os.path.splitext(nome_video)
+    nome_download = f"Relatorio_{nome_base}.pdf"
+
+    # 1. Reaproveita o relatório já gerado se nenhuma emoção/marcador mudou
+    #    desde a última geração (ver RelatorioService.cache_relatorio_valido).
+    if relatorio_service_instance.cache_relatorio_valido(video_doc):
+        print(f"Reutilizando relatório em cache para {video_id}.")
+        cached = requests.get(video_doc["relatorio_cache_url"], timeout=30)
+        cached.raise_for_status()
+        return Response(
+            content=cached.content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{nome_download}"'},
+        )
+
+    # 2. Buscar os dados do banco (thread — não bloqueia a event loop)
+    lista_analises = await relatorio_service_instance.buscar_frames_do_banco_async(video_id)
     if not lista_analises:
         raise HTTPException(
             status_code=404,
             detail=f"Nenhum dado de análise encontrado para o video_id: {video_id}"
         )
 
-    # 4. Definir um nome de arquivo temporário único (no servidor)
     temp_filename = f"temp_report_{uuid.uuid4()}.pdf"
 
-    # 5. Gerar o PDF (thread — CPU/I/O intensivo, não pode rodar direto na event loop)
+    # 3. Gerar o PDF (thread — CPU/I/O intensivo, não pode rodar direto na event loop)
     try:
         await relatorio_service_instance.gerar_relatorio_pdf_async(temp_filename, lista_analises, video_id)
     except Exception as e:
-        # Se a geração do PDF falhar, limpa o arquivo (se existir)
         await _cleanup_file(temp_filename)
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao gerar o arquivo PDF: {e}"
         )
 
-    # 6. Adicionar tarefa de background para limpar o arquivo DEPOIS
-    #    que a resposta for enviada.
-    background_tasks.add_task(_cleanup_file, temp_filename)
-    
-    # 7. Buscar o nome original e formatar para o download
-    nome_video = relatorio_service_instance.obter_nome_arquivo_video(video_id)
-    
-    # Remove a extensão original (ex: .mp4) e adiciona .pdf
-    nome_base, _ = os.path.splitext(nome_video)
-    nome_download = f"Relatorio_{nome_base}.pdf"
+    # 4. Envia para o Firebase e registra o cache para os próximos downloads.
+    #    Falha no cache não deve impedir a entrega do PDF já gerado.
+    try:
+        storage_service = create_storage_service()
+        upload_result = await storage_service.upload_pdf_async(
+            temp_filename, f"relatorio_{video_id}", "feelframe/relatorios"
+        )
+        relatorio_service_instance.salvar_cache_relatorio(video_id, upload_result["secure_url"])
+    except Exception as e:
+        print(f"[AVISO] Falha ao salvar cache do relatório: {e}")
 
-    # 8. Retornar o arquivo como resposta
+    background_tasks.add_task(_cleanup_file, temp_filename)
+
     return FileResponse(
         path=temp_filename,
         media_type='application/pdf',
-        # Este é o nome que o usuário verá no prompt de download
-        filename=nome_download 
+        filename=nome_download
     )

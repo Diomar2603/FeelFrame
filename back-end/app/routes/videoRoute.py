@@ -10,10 +10,14 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+from pymongo import UpdateOne
+
 from app.services.videoService import VideoService
 from app.services.interfaces.IStorageService import IStorageService
 from app.services.storageFactory import create_storage_service
+from app.services.faceAnalyzer import FaceAnalyzer
 from app.models.StorageSource import StorageSource
+from app.models.FrameAnalysis import EmocaoEnum, DimensaoComportamentalEnum
 from app.utils.DatabaseConfig import DatabaseConfig
 from app.utils.auth_deps import get_current_user
 
@@ -627,6 +631,7 @@ async def add_video_marker(
         "color":      body.color,
         "created_at": now,
     })
+    db["videos"].update_one({"_id": video_id}, {"$set": {"content_updated_at": now}})
 
     return {
         "marker_id":  marker_id,
@@ -675,6 +680,10 @@ async def update_marker(
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
 
     db["markers"].update_one({"_id": marker_id}, {"$set": updates})
+    db["videos"].update_one(
+        {"_id": marker_doc["video_id"]},
+        {"$set": {"content_updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
 
     updated = db["markers"].find_one({"_id": marker_id})
     return {
@@ -727,24 +736,69 @@ async def bulk_replace_emotions(
     start_ms = int(body.start_time * 1000)
     end_ms   = int(body.end_time   * 1000)
     query    = {"video_id": video_id, "timestamp_ms": {"$gte": start_ms, "$lte": end_ms}}
-    new_val  = {"$set": {"emocao": body.new_emotion}}
 
-    # Tenta executar dentro de uma transação ACID (requer replica set no MongoDB)
-    try:
-        with db_config_instance.client.start_session() as session:
-            with session.start_transaction():
-                result = db["frame_analysis"].update_many(query, new_val, session=session)
-    except Exception as txn_err:
-        # Fallback: instância standalone sem replica set
-        _logging.warning("Transação não suportada; usando atualização direta. Causa: %s", txn_err)
-        result = db["frame_analysis"].update_many(query, new_val)
+    new_emocao_enum = EmocaoEnum(body.new_emotion)
 
-    # Reconstrói a timeline de emoções com os dados atualizados
+    # A emoção afeta diretamente o engajamento e o estado de fluxo calculados
+    # (ver FaceAnalyzer._calcular_estimativa_engajamento/_detectar_estado_fluxo),
+    # então cada frame afetado precisa ser recalculado individualmente a
+    # partir da dimensão comportamental e confiança já existentes — não é só
+    # trocar o rótulo da emoção.
+    affected_frames = list(
+        db["frame_analysis"].find(
+            query,
+            {"_id": 1, "dimensao_comportamental": 1, "emotion_confidence": 1},
+        )
+    )
+
+    operations = []
+    for frame in affected_frames:
+        dimensao_enum = DimensaoComportamentalEnum(
+            frame.get("dimensao_comportamental") or DimensaoComportamentalEnum.INDEFINIDO.value
+        )
+        confidence = frame.get("emotion_confidence") or 0.0
+
+        estado_fluxo = FaceAnalyzer._detectar_estado_fluxo(
+            new_emocao_enum, dimensao_enum, confidence, None, None
+        )
+        estimativa_enum = FaceAnalyzer._calcular_estimativa_engajamento(
+            dimensao_enum, new_emocao_enum, confidence, estado_fluxo
+        )
+
+        operations.append(UpdateOne(
+            {"_id": frame["_id"]},
+            {"$set": {
+                "emocao":                body.new_emotion,
+                "estado_fluxo":          estado_fluxo,
+                "estimativa_engajamento": estimativa_enum.value,
+            }},
+        ))
+
+    modified_count = 0
+    if operations:
+        # Tenta executar dentro de uma transação ACID (requer replica set no MongoDB)
+        try:
+            with db_config_instance.client.start_session() as session:
+                with session.start_transaction():
+                    result = db["frame_analysis"].bulk_write(operations, session=session)
+        except Exception as txn_err:
+            # Fallback: instância standalone sem replica set
+            _logging.warning("Transação não suportada; usando atualização direta. Causa: %s", txn_err)
+            result = db["frame_analysis"].bulk_write(operations)
+        modified_count = result.modified_count
+
+    db["videos"].update_one(
+        {"_id": video_id},
+        {"$set": {"content_updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    # Reconstrói as timelines de emoção e engajamento com os dados atualizados
     frames = list(
         db["frame_analysis"]
         .find(
             {"video_id": video_id},
-            {"timestamp_ms": 1, "frame_number": 1, "emocao": 1, "_id": 0},
+            {"timestamp_ms": 1, "frame_number": 1, "emocao": 1,
+             "estimativa_engajamento": 1, "_id": 0},
         )
         .sort([("timestamp_ms", 1), ("frame_number", 1)])
     )
@@ -752,10 +806,14 @@ async def bulk_replace_emotions(
     emocao_blocks = await _build_timeline_blocks(
         frames, field="emocao", default_below_threshold="Neutro"
     )
+    engajamento_blocks = await _build_timeline_blocks(
+        frames, field="estimativa_engajamento", default_below_threshold="Indefinido"
+    )
 
     return {
-        "updated_count": result.modified_count,
+        "updated_count": modified_count,
         "emocao": emocao_blocks,
+        "estimativa_engajamento": engajamento_blocks,
     }
 
 

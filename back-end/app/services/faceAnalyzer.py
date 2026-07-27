@@ -484,7 +484,8 @@ class FaceAnalyzer:
             return DimensaoComportamentalEnum.INDEFINIDO_CONCENTRADO
         return DimensaoComportamentalEnum.DISTRAIDO
 
-    def _detectar_estado_fluxo(self, emocao, dimensao, confidence, pose_obj, gaze_obj):
+    @staticmethod
+    def _detectar_estado_fluxo(emocao, dimensao, confidence, pose_obj, gaze_obj):
         if dimensao != DimensaoComportamentalEnum.CONCENTRADO:
             return False
         if emocao not in (EmocaoEnum.FELIZ, EmocaoEnum.SURPRESO, EmocaoEnum.NEUTRO):
@@ -493,7 +494,8 @@ class FaceAnalyzer:
             return False
         return True
 
-    def _get_emotion_score(self, emocao, confidence):
+    @staticmethod
+    def _get_emotion_score(emocao, confidence):
         base = {
             EmocaoEnum.FELIZ:    40,
             EmocaoEnum.SURPRESO: 30,
@@ -504,7 +506,8 @@ class FaceAnalyzer:
         }.get(emocao, 0)
         return int(base * min(confidence / 0.5, 1.0))
 
-    def _calcular_estimativa_engajamento(self, dimensao, emocao, confidence,
+    @staticmethod
+    def _calcular_estimativa_engajamento(dimensao, emocao, confidence,
                                          estado_fluxo=False):
         if estado_fluxo:
             return EstimativaEngajamentoEnum.ALTAMENTE_ENGAJADO
@@ -518,7 +521,7 @@ class FaceAnalyzer:
             DimensaoComportamentalEnum.INDEFINIDO:             20,
         }
         score += dimensao_scores.get(dimensao, 20)
-        score += self._get_emotion_score(emocao, confidence)
+        score += FaceAnalyzer._get_emotion_score(emocao, confidence)
 
         if score >= 80:
             return EstimativaEngajamentoEnum.ALTAMENTE_ENGAJADO
