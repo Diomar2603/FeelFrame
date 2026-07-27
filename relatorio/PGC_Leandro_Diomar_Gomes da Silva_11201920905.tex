@@ -174,7 +174,7 @@ The automatic understanding of human emotions from videos represents a relevant 
 
 O reconhecimento de emoções humanas é uma das capacidades mais complexas da cognição, e replicá-la computacionalmente tem sido um dos grandes desafios da inteligência artificial moderna. As expressões faciais são o canal mais rico e universal de comunicação emocional: estima-se que mais de 55\% da comunicação humana seja não-verbal, e o rosto representa a maior parte desse canal \cite{mehrabian1971silent}.
 
-Com o avanço do ensino a distância, das videoconferências e da produção de conteúdo audiovisual, surgiu uma demanda crescente por ferramentas capazes de avaliar automaticamente o nível de engajamento e as reações emocionais de uma pessoa ao assistir a um vídeo ou realizar uma apresentação. Educadores desejam saber se seus alunos estão concentrados; criadores de conteúdo querem entender em quais momentos os espectadores ficam mais atentos; pesquisadores de UX precisam capturar reações espontâneas de usuários.
+Com o avanço da produção de conteúdo educacional digital e de Jogos Educacionais Digitais (JEDs), surgiu a necessidade de ferramentas capazes de avaliar a eficácia desses materiais durante sua fase de concepção e testes empíricos. O FeelFrame foi idealizado para ser empregado na fase de avaliação pedagógica, antes do lançamento de uma tecnologia no mercado. Seu propósito não é o monitoramento contínuo de discentes em tempo real --- prática que esbarra em complexas questões éticas ---, mas atuar estritamente como um instrumento de teste, com o intuito de analisar o engajamento de objetos de aprendizagem (OAs), contribuindo assim para a avaliação de qualidade dos OAs existentes e para o projeto de OAs que ainda estão sendo desenvolvidos.
 
 Este trabalho parte diretamente de uma pesquisa anterior realizada na Universidade Federal do ABC: o Trabalho de Conclusão de Curso de Nelson Nascimento \cite{nascimento2024nelson}, cujos resultados foram também publicados no Simpósio Brasileiro de Informática na Educação \cite{nascimento2024sbie}. Essa pesquisa original desenvolveu um algoritmo robusto capaz de detectar emoções faciais e estimar o nível de engajamento a partir de vídeos, combinando visão computacional e aprendizado profundo. O algoritmo original, embora cientificamente sólido, foi concebido para execução em ambiente local --- um script Python que exige instalação de dependências específicas e domínio técnico para operação --- sendo inacessível ao usuário final não especializado. O principal desafio deste PGC é, portanto, de engenharia de produto: transpor essa pesquisa acadêmica para o ambiente web, preservando e ampliando suas capacidades analíticas em uma plataforma acessível e escalável.
 
@@ -190,7 +190,7 @@ O problema central deste trabalho é: \textit{Como transformar o algoritmo de de
 
 \subsection{Objetivo Geral}
 
-Desenvolver o sistema \textbf{FeelFrame}: uma aplicação web completa para análise automática de expressões faciais, classificação de emoções e estimativa de engajamento em vídeos, utilizando bibliotecas de visão computacional de código aberto.
+Desenvolver o sistema \textbf{FeelFrame}: uma aplicação web completa para análise automática de expressões faciais, classificação de emoções e estimativa de engajamento em vídeos, utilizando bibliotecas de visão computacional de código aberto. Com intuito de analisar o engajamento de objetos de aprendizagem, contribuindo assim para avaliação de qualidade dos Oas existentes e o para o projeto de OAs que ainda estão sendo desenvolvidos.com intuito de analisar o engajamento de objetos de aprendizagem, contribuindo assim para avaliação de qualidade dos Oas existentes e o para o projeto de OAs que ainda estão sendo desenvolvidos.
 
 \subsection{Objetivos Específicos}
 
@@ -210,13 +210,11 @@ O FeelFrame se justifica em múltiplas frentes:
 
 \textbf{Acadêmica}: Contribui para a pesquisa em reconhecimento afetivo computacional (\textit{affective computing}), área fundada por Rosalind Picard \cite{picard1997affective}, ao implementar um sistema integrado e funcional.
 
-\textbf{Educacional}: Em ambientes de ensino remoto, a detecção automática de engajamento pode alertar professores sobre alunos desatentos e ajudar na melhoria do material didático.
-
-\textbf{Mercado}: Pesquisas de UX, marketing e publicidade se beneficiam da análise de reações espontâneas de usuários sem a necessidade de questionários.
+\textbf{Educacional}: O sistema atua como uma ferramenta de testes de usabilidade e avaliação pedagógica, permitindo entender como os objetos de aprendizagem e jogos educacionais podem engajar ou não o público-alvo. Isso é feito baseando-se em evidências emocionais e comportamentais extraídas de sessões de teste controladas, indicando em quais pontos exatos a tecnologia falha em manter o interesse.
 
 \textbf{Técnica}: O trabalho demonstra a integração de tecnologias modernas (DeepFace, MediaPipe, FastAPI, React, MongoDB, Firebase) em um produto coeso e funcional.
 
-\textbf{Continuidade de pesquisa}: O FeelFrame atua como elo entre a pesquisa científica do Prof. Nelson \cite{nascimento2024nelson} e a engenharia de software aplicada, demonstrando como resultados acadêmicos podem ser transpostos para produtos utilizáveis pela comunidade.
+\textbf{Continuidade de pesquisa}: O FeelFrame atua como elo entre a pesquisa científica do Prof. Nelson \cite{nascimento2024nelson} e a engenharia de software aplicada, demonstrando como resultados acadêmicos podem ser transpostos para produtos utilizáveis pela comunidade. Para entender como objetos de aprendizagem podem engajar ou não.
 
 \section{DISCIPLINAS FORMADORAS DO PROJETO}
 
@@ -241,7 +239,7 @@ Engenharia de Software & MCTA033-15 &
 Princípios de arquitetura de software, design de APIs RESTful, versionamento e boas práticas de desenvolvimento que guiaram a estruturação do projeto em módulos coesos e extensíveis. \\ \hline
 
 Processamento de Linguagem Natural & MCZA017-13 &
-Técnicas de processamento de dados não estruturados e pipelines de análise automatizada que influenciaram a concepção do pipeline de processamento de frames e geração de relatórios textuais com análise ARCS. \\ \hline
+Técnicas de processamento de dados não estruturados e pipelines de análise automatizada que influenciaram a concepção do pipeline de processamento de frames e geração de relatórios textuais. \\ \hline
 
 Modelagem de Banco de Dados & MCCC012-23 &
 Projeto dos esquemas das coleções MongoDB (\texttt{users}, \texttt{videos}, \texttt{frame\_analysis}, \texttt{markers}), definição de índices, estratégias de integridade referencial em nível de aplicação e consultas eficientes por \texttt{video\_id}. \\ \hline
@@ -335,23 +333,24 @@ O React \cite{react2023} é uma biblioteca JavaScript para construção de inter
 
 A autenticação no FeelFrame utiliza JWT \cite{jones2015json}, um padrão aberto (RFC 7519) para criação de tokens de acesso compactos e autocontidos. O token carrega o identificador do usuário e é assinado com uma chave secreta usando o algoritmo HMAC-SHA256. O tempo de expiração padrão é de 7 dias.
 
-\subsection{Modelo ARCS de Motivação}
-\label{sec:arcs}
+\subsection{Modelo Teórico de Engajamento}
+\label{sec:modelo_engajamento}
 
-O modelo ARCS \cite{keller1987arcs}, proposto por John Keller em 1987, é um \textit{framework} motivacional para \textit{design} instrucional baseado em quatro dimensões: \textbf{A}tenção (\textit{Attention}), \textbf{R}elevância (\textit{Relevance}), \textbf{C}onfiança (\textit{Confidence}) e \textbf{S}atisfação (\textit{Satisfaction}). Cada dimensão representa um aspecto distinto da motivação do aprendiz durante uma atividade educacional.
+O FeelFrame fundamenta-se no modelo teórico e computacional de detecção de engajamento, alinhado à pesquisa de Nascimento Junior \cite{nascimento2024nelson}, que integra conceitos da psicologia educacional e da computação afetiva para avaliar a interação do usuário com objetos de aprendizagem. Diferente de abordagens focadas apenas no desempenho de classificadores, este modelo compreende o engajamento como uma emoção complexa composta por dimensões integradas.
 
-O modelo encontrou aplicação prática em sistemas de análise de engajamento computacional, onde métricas observáveis do comportamento físico e emocional são utilizadas como proxies para as dimensões motivacionais. O FeelFrame calcula proxies para duas das dimensões:
+A dimensão comportamental é mensurada pelo nível de atenção, extraído através da pose da cabeça e da direção do olhar. A dimensão emocional baseia-se nas emoções básicas universais de Ekman \cite{ekman1971constants}, que são mapeadas no Modelo Circunflexo de Russell (1980), categorizando os estados afetivos nos eixos de valência (prazer versus desprazer) e ativação (energia). A partir da combinação de atributos observacionais (pose da cabeça, piscagem, direção do olhar e expressão facial), o modelo utiliza regras de decisão para classificar o estado do estudante em níveis distintos durante o uso da tecnologia:
 
 \begin{itemize}
-    \item \textbf{Atenção (ARCS\_Atenção)}: estimada pelo desvio médio absoluto dos ângulos \textit{yaw} e \textit{pitch} da cabeça em relação à mediana do vídeo, normalizado para o intervalo $[0, 100]$. Quando a cabeça permanece estável na posição central, o score se aproxima de 100; desvios progressivos diminuem o score proporcionalmente. Frames com confiança emocional abaixo de 50\% recebem score zero, evitando falsos positivos por baixa qualidade de detecção;
-    \item \textbf{Satisfação (ARCS\_Satisfação)}: derivada da emoção detectada --- emoção \textit{Feliz} gera pontuação igual à confiança emocional (escala 0--100); \textit{Neutro} contribui com metade desse valor; demais emoções contribuem com zero.
+    \item \textbf{Fluxo (Flow)}: Representa o estado de alto engajamento, caracterizado por imersão total e satisfação durante uma atividade desafiadora \cite{csikszentmihalyi1990flow}. Ocorre quando há foco direcional (cabeça e olhos voltados para a tela) combinado com emoções de alta valência e ativação (feliz, surpreso) ou atenção neutra;
+    \item \textbf{Engajado}: O usuário mantém o foco comportamental e a ativação fisiológica na tarefa, mesmo manifestando emoções de valência negativa (como raiva ou medo). Isso sinaliza um envolvimento cognitivo reativo com o jogo ou OA, indicando, por exemplo, superação de desafios ou frustração produtiva;
+    \item \textbf{Desengajado}: Caracterizado por comportamentos de retirada de atenção, como olhos fechados ou desvio constante do olhar, independentemente da emoção expressa. Indica estados de baixa ativação, apatia ou tédio, sinalizando pontos onde o design educacional falhou em reter o usuário.
 \end{itemize}
 
-Esses proxies são utilizados no módulo de relatório para gerar gráficos de linha temporal e um painel de validação cruzada que relaciona atenção com engajamento e satisfação com emoção.
+A utilização deste referencial no módulo de relatórios do FeelFrame permite que educadores e desenvolvedores identifiquem com precisão os instantes em que o fluxo ocorre ou é quebrado, servindo como base empírica para o refinamento do design de tecnologias educacionais.
 
 \subsection{UMAP -- Redução de Dimensionalidade}
 
-O UMAP (\textit{Uniform Manifold Approximation and Projection}) \cite{mcinnes2018umap} é um algoritmo avançado que reduz a complexidade dos dados de forma mais eficiente que o t-SNE. No FeelFrame, ele é usado opcionalmente no módulo de relatório para transformar todas as métricas de um frame (posição da cabeça, olhar e emoções) em gráficos 2D ou 3D. Isso agrupa visualmente os comportamentos semelhantes, permitindo identificar rapidamente os padrões de engajamento no vídeo.
+O UMAP (\textit{Uniform Manifold Approximation and Projection}) \cite{mcinnes2018umap} é um algoritmo avançado que reduz a complexidade dos dados de forma mais eficiente que o t-SNE. No FeelFrame, ele é usado opcionalmente no módulo de relatório para transformar todas as métricas de frame em gráficos 2D ou 3D. Isso agrupa visualmente os comportamentos semelhantes, permitindo identificar rapidamente os padrões de engajamento no vídeo.
 
 % ==========================================================
 \chapter{REVISÃO DE LITERATURA}
@@ -404,7 +403,7 @@ Interface do usuário       & Terminal / arquivo de saída   & Interface gráfic
 Processamento              & Síncrono, bloqueante          & Assíncrono, BackgroundTasks + SSE          \\ \hline
 Persistência               & Arquivos locais               & MongoDB + Firebase Storage                 \\ \hline
 Edição de dados            & Não disponível                & Bulk update e marcadores interativos       \\ \hline
-Relatório                  & Saída textual / CSV           & PDF com gráficos Plotly e análise ARCS     \\ \hline
+Relatório                  & Saída textual / CSV           & PDF com gráficos Plotly e análise detalhada\\ \hline
 Dataset de calibração      & Base de controle original     & Base de dados externa para generalização   \\ \hline
 \end{tabular}%
 }
@@ -596,11 +595,11 @@ source.onmessage = (event) => {
 
 \section{Módulo de Relatório}
 
-O \texttt{RelatorioService} é responsável pela geração de relatórios em PDF a partir dos dados de análise de um vídeo. Seu fluxo de trabalho é composto por quatro etapas assíncronas: (1) busca dos documentos \texttt{FrameAnalysis} no MongoDB; (2) cálculo de distribuições percentuais e momentos de destaque; (3) geração de gráficos com Plotly e aplicação do modelo ARCS; (4) montagem do PDF com a biblioteca FPDF e upload para o Firebase Storage.
+O \texttt{RelatorioService} é responsável pela geração de relatórios em PDF a partir dos dados de análise de um vídeo. Seu fluxo de trabalho é composto por quatro etapas assíncronas: (1) busca dos documentos \texttt{FrameAnalysis} no MongoDB; (2) cálculo de distribuições percentuais e momentos de destaque; (3) geração de gráficos com Plotly; (4) montagem do PDF com a biblioteca FPDF e upload para o Firebase Storage.
 
-\subsection{Análise ARCS no Relatório}
+\subsection{Análise do Engajamento no Relatório}
 
-Para cada vídeo, o relatório calcula os proxies do modelo ARCS \cite{keller1987arcs} conforme descrito na Seção~\ref{sec:arcs}. Os scores de Atenção e Satisfação são calculados frame a frame, permitindo a geração de uma \textbf{linha do tempo de atenção e satisfação}, que mostra a variação dessas dimensões ao longo do vídeo. Um \textbf{painel de validação cruzada} é também gerado, relacionando os proxies ARCS com as dimensões de engajamento e emoção detectadas, permitindo verificar a coerência entre as diferentes métricas.
+Para cada vídeo, o relatório calcula e apresenta a evolução dos níveis de engajamento conforme o modelo teórico descrito na Seção~\ref{sec:modelo_engajamento}. A análise permite gerar uma linha do tempo do estado do usuário, relacionando a dimensão comportamental com as valências emocionais, permitindo verificar a consistência das métricas e identificar os pontos de ruptura do fluxo.
 
 \subsection{Gráficos Temporais e Distributivos}
 
@@ -609,8 +608,7 @@ O relatório inclui os seguintes elementos visuais, todos gerados com Plotly e e
 \begin{itemize}
     \item \textbf{Gráficos de barras empilhadas temporais}: um para cada dimensão de análise (engajamento, comportamento, emoção e estado de fluxo), onde cada coluna representa um frame e a cor indica a categoria detectada. A linha do tempo visual resultante permite identificar momentos de transição de estado;
     \item \textbf{Gráficos de pizza (distribuição percentual)}: resumem a proporção de frames em cada categoria, facilitando comparações rápidas;
-    \item \textbf{Linha do tempo ARCS}: gráfico de linhas mostrando a evolução dos scores de Atenção e Satisfação ao longo do tempo;
-    \item \textbf{Painel de validação cruzada ARCS}: \textit{boxplots} que correlacionam Atenção com Engajamento e Satisfação com Emoção.
+    \item \textbf{Painel de validação cruzada}: \textit{boxplots} que correlacionam o nível de atenção com o engajamento geral e a emoção.
 \end{itemize}
 
 O relatório também lista os \textbf{momentos de destaque}: períodos do vídeo onde mais de 75\% dos frames em um segundo foram classificados como ``Engajado'' ou ``Altamente Engajado'' (alta concentração), e períodos onde mais de 75\% foram classificados como ``Altamente Desengajado'' (risco de perda de atenção). Opcionalmente, o UMAP \cite{mcinnes2018umap} pode ser aplicado sobre as sete features de cada frame para gerar projeções 2D/3D de clusters comportamentais.
@@ -621,7 +619,7 @@ O front-end é uma SPA (Single Page Application) construída com React 19 e Vite
 
 \subsection{Autenticação no Front-end}
 
-O estado de autenticação é gerenciado pelo \texttt{AuthContext}, que persiste o token JWT e os dados do usuário no \texttt{localStorage}. O hook \texttt{useAuth()} expõe as funções \texttt{login} e \texttt{logout} para os componentes.
+O estado de autenticação é gerenciado pelo \texttt{AuthContext}, que persiste o token JWT e os dados do usuário no \texttt{localStorage}. O hook \texttt{useAuth()} expõe as funções \texttt{login} e \texttt{logout} para os components.
 
 \begin{figure}[H]
 \centering
@@ -838,7 +836,7 @@ Conclui-se que o FeelFrame apresenta resultados analiticamente equivalentes ao a
 \label{cap:conclusao}
 % ==========================================================
 
-Este trabalho apresentou o \textbf{FeelFrame}, um sistema web completo e de código aberto para análise automática de expressões faciais e estados emocionais em vídeos. O sistema tem como origem direta a pesquisa de Nelson Nascimento \cite{nascimento2024nelson} e demonstrou viabilidade técnica e funcional ao transpor esse algoritmo local para o ambiente web, sendo capaz de detectar as emoções básicas de Ekman, estimar o engajamento e a dimensão comportamental do sujeito analisado, e apresentar esses resultados em uma interface intuitiva estilo editor de vídeo, com funcionalidades de edição em lote e geração de relatórios com análise ARCS \cite{keller1987arcs}.
+Este trabalho apresentou o \textbf{FeelFrame}, um sistema web completo e de código aberto para análise automática de expressões faciais e estados emocionais em vídeos. O sistema tem como origem direta a pesquisa de Nelson Nascimento \cite{nascimento2024nelson} e demonstrou viabilidade técnica e funcional ao transpor esse algoritmo local para o ambiente web, sendo capaz de detectar as emoções básicas de Ekman, estimar o engajamento e a dimensão comportamental do sujeito analisado, e apresentar esses resultados em uma interface intuitiva estilo editor de vídeo, com funcionalidades de edição em lote e geração de relatórios detalhados sobre o engajamento.
 
 As principais contribuições técnicas do trabalho foram:
 \begin{enumerate}
@@ -846,7 +844,7 @@ As principais contribuições técnicas do trabalho foram:
     \item Integração coesa das bibliotecas DeepFace, MediaPipe FaceMesh e OpenCV YuNet em um pipeline assíncrono e \textit{thread-safe}, com detecção EAR de olhos fechados e estratégia de recorte fixo;
     \item Implementação de Server-Sent Events para acompanhamento de progresso em tempo real, sem necessidade de \textit{polling};
     \item Desenvolvimento de uma interface web responsiva com linha do tempo emocional interativa, edição em lote de emoções (\textit{drag-to-select} + \textit{bulk update} transacional) e marcadores persistidos;
-    \item Módulo de relatório com proxies computacionais do modelo ARCS \cite{keller1987arcs}, gráficos Plotly e análise UMAP \cite{mcinnes2018umap} opcional de clusters comportamentais;
+    \item Módulo de relatório alicerçado no modelo de engajamento, gráficos Plotly e análise UMAP \cite{mcinnes2018umap} opcional de clusters comportamentais;
     \item Sistema de autenticação completo com suporte a email/senha, com vinculação de vídeos por usuário.
 \end{enumerate}
 
@@ -869,7 +867,7 @@ Múltiplas direções de pesquisa e desenvolvimento podem ser exploradas como co
 
 O FeelFrame representa uma contribuição concreta para a área de computação afetiva acessível. Partindo da pesquisa de \cite{nascimento2024nelson} como fundação científica, o sistema demonstra que é possível transpor resultados de pesquisa acadêmica para um produto de software funcional usando exclusivamente tecnologias de código aberto, sem custos de licenciamento. A combinação de um back-end robusto em Python com FastAPI e um front-end moderno em React resultou em uma aplicação coesa, responsiva e extensível que preserva o rigor analítico do algoritmo original enquanto o torna acessível a qualquer usuário com um navegador web.
 
-A principal lição aprendida durante o desenvolvimento foi a importância do processamento assíncrono: o uso de \texttt{BackgroundTasks} e SSE transformou uma experiência de usuário frustrante (aguardar o processamento de forma síncrona) em uma experiência fluida e informativa. O paradigma de ``disparar e acompanhar'' provou-se essencial para aplicações com operações de longa duração. Adicionalmente, a inclusão de proxies do modelo ARCS \cite{keller1987arcs} no módulo de relatório demonstrou que métricas de motivação instrucional podem ser aproximadas computacionalmente a partir de dados de visão computacional, abrindo caminho para análises educacionais mais ricas.
+A principal lição aprendida durante o desenvolvimento foi a importância do processamento assíncrono: o uso de \texttt{BackgroundTasks} e SSE transformou uma experiência de usuário frustrante (aguardar o processamento de forma síncrona) em uma experiência fluida e informativa. O paradigma de ``disparar e acompanhar'' provou-se essencial para aplicações com operações de longa duração. Adicionalmente, a inclusão das métricas de engajamento no módulo de relatório demonstrou que a avaliação pedagógica de objetos de aprendizagem pode ser fundamentada computacionalmente a partir de dados de visão computacional, abrindo caminho para análises educacionais empíricas mais ricas e auxiliando no design de tecnologias antes de seu lançamento.
 
 Espera-se que o FeelFrame sirva como base para pesquisas futuras em reconhecimento de emoções aplicado, e que sua natureza open-source permita que a comunidade acadêmica e técnica --- incluindo os continuadores do trabalho de \cite{nascimento2024nelson} --- contribua com melhorias e adaptações para novos domínios de aplicação.
 
