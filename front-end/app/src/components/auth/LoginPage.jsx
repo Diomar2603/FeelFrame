@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import './LoginPage.css';
-
-const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -34,19 +31,6 @@ export default function LoginPage() {
       } else {
         result = await authService.login(email, password);
       }
-      handleSuccess(result);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSuccess = async (credentialResponse) => {
-    setError(null);
-    setLoading(true);
-    try {
-      const result = await authService.googleAuth(credentialResponse.credential);
       handleSuccess(result);
     } catch (err) {
       setError(err.message);
@@ -125,22 +109,6 @@ export default function LoginPage() {
             {loading ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
           </button>
         </form>
-
-        {GOOGLE_ENABLED && (
-          <>
-            <div className="login-divider"><span>ou</span></div>
-            <div className="google-btn-wrapper">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError('Falha no login com Google.')}
-                useOneTap={false}
-                text={mode === 'register' ? 'signup_with' : 'signin_with'}
-                shape="rectangular"
-                width="100%"
-              />
-            </div>
-          </>
-        )}
 
       </div>
     </div>

@@ -375,26 +375,33 @@ class RelatorioService:
         )
 
     def _adicionar_marcadores_no_grafico(self, fig: go.Figure,
-                                         df_temporal: pd.DataFrame,
-                                         markers: List[Dict[str, Any]]) -> go.Figure:
+                                         markers: List[Dict[str, Any]],
+                                         x_para_marcador,
+                                         y_range: Tuple[float, float] = (0, 1)) -> go.Figure:
         """
         Sobrepõe uma linha vertical por marcador da timeline no gráfico
         temporal, com o rótulo do marcador na legenda e a cor escolhida pelo
         usuário no editor (mesmo fallback #f0a500 usado no front-end quando
         o marcador não tem cor definida).
+
+        `x_para_marcador` converte o `time` do marcador (segundos) para a
+        unidade do eixo X do gráfico alvo (frame_number ou timestamp_ms) —
+        cada gráfico temporal usa uma unidade diferente.
         """
-        if df_temporal.empty or not markers:
+        if not markers:
             return fig
 
+        y0, y1 = y_range
         for marker in markers:
-            marker_ms = marker.get("time", 0) * 1000
-            idx = (df_temporal["timestamp_ms"] - marker_ms).abs().idxmin()
-            x_pos = df_temporal.loc[idx, "frame_number"]
+            x_pos = x_para_marcador(marker.get("time", 0))
+            if x_pos is None:
+                continue
+
             label = marker.get("label") or "Marcador"
             color = marker.get("color") or self._MARKER_DEFAULT_COLOR
 
             fig.add_trace(go.Scatter(
-                x=[x_pos, x_pos], y=[0, 1],
+                x=[x_pos, x_pos], y=[y0, y1],
                 mode="lines",
                 line=dict(color=color, width=2, dash="dash"),
                 name=label,
@@ -574,6 +581,11 @@ class RelatorioService:
                 line=dict(color='#00CC96', width=2)
             ))
 
+        marcadores = self._buscar_marcadores(video_id)
+        self._adicionar_marcadores_no_grafico(
+            fig, marcadores, x_para_marcador=lambda segundos: segundos * 1000, y_range=(0, 100)
+        )
+
         fig.update_layout(
             title='Timeline de Atenção e Satisfação (ARCS)',
             xaxis_title='Tempo (ms)',
@@ -683,8 +695,17 @@ class RelatorioService:
             fig_fluxo = _gerar_grafico_barras_temporal(df_temporal, "estado_fluxo_str", "Fluxo Temporal")
 
             marcadores = self._buscar_marcadores(video_id)
+
+            def _frame_para_marcador(segundos, _df=df_temporal):
+                if _df.empty:
+                    return None
+                idx = (_df["timestamp_ms"] - segundos * 1000).abs().idxmin()
+                return _df.loc[idx, "frame_number"]
+
             for fig_temporal in (fig_eng, fig_comp, fig_emo, fig_fluxo):
-                self._adicionar_marcadores_no_grafico(fig_temporal, df_temporal, marcadores)
+                self._adicionar_marcadores_no_grafico(
+                    fig_temporal, marcadores, _frame_para_marcador, y_range=(0, 1)
+                )
 
             charts_to_export = [
                 (fig_eng,   f"temp_spike_eng_{run_tag}.png"),

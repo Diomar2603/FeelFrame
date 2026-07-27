@@ -151,30 +151,3 @@
   cursor: not-allowed;
 }
 
-/* Divider */
-.login-divider {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 1.25rem 0;
-  color: #555;
-  font-size: 0.8rem;
-}
-
-.login-divider::before,
-.login-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: #2a2a2a;
-}
-
-/* Google button container */
-.google-btn-wrapper {
-  display: flex;
-  justify-content: center;
-}
-
-.google-btn-wrapper > div {
-  width: 100% !important;
-}

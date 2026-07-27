@@ -1,13 +1,21 @@
-import { API_BASE_URL } from '../config/api';
-
-function authHeader() {
-  const token = localStorage.getItem('feelframe_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+import { apiFetch } from './apiClient';
 
 async function _get(path) {
-  const res = await fetch(`${API_BASE_URL}${path}`, { headers: authHeader() });
+  const res = await apiFetch(path);
   if (!res.ok) throw new Error(`Erro na requisição: ${res.status}`);
+  return res.json();
+}
+
+async function _json(path, method, body) {
+  const res = await apiFetch(path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Erro na requisição');
+  }
   return res.json();
 }
 
@@ -30,9 +38,8 @@ class VideoService {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch(`${API_BASE_URL}/arquivos/enviar/`, {
+      const res = await apiFetch('/arquivos/enviar/', {
         method: 'POST',
-        headers: authHeader(),
         body: formData,
       });
 
@@ -58,10 +65,7 @@ class VideoService {
 
   async deleteProject(videoId) {
     try {
-      const res = await fetch(`${API_BASE_URL}/arquivos/videos/${videoId}`, {
-        method: 'DELETE',
-        headers: authHeader(),
-      });
+      const res = await apiFetch(`/arquivos/videos/${videoId}`, { method: 'DELETE' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || 'Erro ao excluir projeto');
@@ -84,16 +88,7 @@ class VideoService {
 
   async addMarker(videoId, time, label = '') {
     try {
-      const res = await fetch(`${API_BASE_URL}/arquivos/videos/${videoId}/marcadores`, {
-        method: 'POST',
-        headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ time, label }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'Erro ao adicionar marcador');
-      }
-      return res.json();
+      return await _json(`/arquivos/videos/${videoId}/marcadores`, 'POST', { time, label });
     } catch (error) {
       console.error('VideoService [addMarker] Error:', error);
       throw error;
@@ -102,16 +97,7 @@ class VideoService {
 
   async updateMarker(markerId, updates) {
     try {
-      const res = await fetch(`${API_BASE_URL}/arquivos/marcadores/${markerId}`, {
-        method: 'PATCH',
-        headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'Erro ao atualizar marcador');
-      }
-      return res.json();
+      return await _json(`/arquivos/marcadores/${markerId}`, 'PATCH', updates);
     } catch (error) {
       console.error('VideoService [updateMarker] Error:', error);
       throw error;
@@ -120,16 +106,11 @@ class VideoService {
 
   async bulkReplaceEmotions(videoId, startTime, endTime, newEmotion) {
     try {
-      const res = await fetch(`${API_BASE_URL}/arquivos/videos/${videoId}/substituir-emocoes`, {
-        method: 'PATCH',
-        headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start_time: startTime, end_time: endTime, new_emotion: newEmotion }),
+      return await _json(`/arquivos/videos/${videoId}/substituir-emocoes`, 'PATCH', {
+        start_time: startTime,
+        end_time: endTime,
+        new_emotion: newEmotion,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'Erro na substituição em lote');
-      }
-      return res.json();
     } catch (error) {
       console.error('VideoService [bulkReplaceEmotions] Error:', error);
       throw error;
@@ -138,10 +119,7 @@ class VideoService {
 
   async generateReport(videoId) {
     try {
-      const res = await fetch(`${API_BASE_URL}/relatorios/${videoId}`, {
-        method: 'GET',
-        headers: authHeader(),
-      });
+      const res = await apiFetch(`/relatorios/${videoId}`, { method: 'GET' });
       if (!res.ok) throw new Error('Erro ao gerar relatório');
 
       const blob = await res.blob();

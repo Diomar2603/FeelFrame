@@ -98,14 +98,13 @@ jobs:
       - name: Autenticar Docker no Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      # A URL do back-end (gerada no job acima) e o Google Client ID são
-      # "queimados" no bundle estático do React durante o `npm run build`
-      # dentro do Dockerfile — por isso são passados como --build-arg.
+      # A URL do back-end (gerada no job acima) é "queimada" no bundle
+      # estático do React durante o `npm run build` dentro do Dockerfile —
+      # por isso é passada como --build-arg.
       - name: Build da imagem
         run: |
           docker build \
             --build-arg VITE_API_BASE_URL=${{ needs.deploy-backend.outputs.backend_url }} \
-            --build-arg VITE_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
             -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/frontend:${{ github.sha }} \
             -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/frontend:latest \
             ./front-end/app

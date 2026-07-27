@@ -18,9 +18,6 @@ export const authService = {
   login: (email, password) =>
     _post('/autenticacao/entrar', { email, password }),
 
-  googleAuth: (credential) =>
-    _post('/autenticacao/google', { credential }),
-
   getMe: (token) =>
     fetch(`${API_BASE_URL}/autenticacao/perfil`, {
       headers: { Authorization: `Bearer ${token}` },

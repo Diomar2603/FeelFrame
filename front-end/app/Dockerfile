@@ -14,9 +14,7 @@ COPY . .
 # por isso precisam chegar aqui como build args (ver DEPLOY.md e o workflow
 # de CI/CD, que passa esses valores via --build-arg).
 ARG VITE_API_BASE_URL
-ARG VITE_GOOGLE_CLIENT_ID
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
-    VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 RUN npm run build
 
