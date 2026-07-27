@@ -87,11 +87,11 @@ namex==0.1.0
 narwhals==2.11.0
 networkx==3.5
 numba==0.65.0
-numpy==1.26.4
+numpy
 oauthlib==3.3.1
 omegaconf==2.3.0
-opencv-contrib-python==4.11.0.86
-opencv-python==4.12.0.88
+opencv-contrib-python
+opencv-python
 opt_einsum==3.4.0
 optree==0.17.0
 orjson==3.11.4
