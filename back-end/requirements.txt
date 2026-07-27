@@ -92,7 +92,7 @@ oauthlib==3.3.1
 omegaconf==2.3.0
 opencv-contrib-python
 opencv-python
-opt_einsum==3.4.0f
+opt_einsum==3.4.0
 optree==0.17.0
 orjson==3.11.4
 packaging==25.0
