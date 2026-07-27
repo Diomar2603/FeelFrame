@@ -143,7 +143,20 @@ class VideoService {
         headers: authHeader(),
       });
       if (!res.ok) throw new Error('Erro ao gerar relatório');
-      return res.json();
+
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename = match ? match[1] : `Relatorio_${videoId}.pdf`;
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('VideoService [generateReport] Error:', error);
       throw error;

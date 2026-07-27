@@ -29,6 +29,8 @@ import os
 import math
 import asyncio
 import functools
+import requests
+from io import BytesIO
 from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
@@ -416,24 +418,38 @@ class RelatorioService:
 
         for frame_info in frames_destaque[:6]:
             try:
-                path = frame_info.get('filepath')
-                if path and os.path.exists(path):
-                    pdf.ln(5)
-                    pdf.cell(
-                        0, 6,
-                        f"Frame {frame_info.get('frame_number', '?')} - {frame_info.get('timestamp_ms', 0)}ms",
-                        0, 1, "L"
-                    )
-                    pdf.cell(
-                        0, 6,
-                        f"Emoção: {frame_info.get('emocao', 'N/A')}, Engajamento: {frame_info.get('engajamento', 'N/A')}",
-                        0, 1, "L"
-                    )
-                    pdf.image(path, x=pdf.l_margin, w=pdf.w - 2 * pdf.l_margin, h=60)
-                    pdf.ln(2)
-                    pdf.cell(0, 1, "_" * 100, 0, 1, "L")
+                # As cenas de destaque ficam salvas no storage configurado
+                # (Firebase/local) sob a chave "firebase_url" — nunca em disco
+                # local, então usar um caminho de arquivo aqui sempre falhava.
+                url = frame_info.get('firebase_url')
+                if not url:
+                    pdf.cell(0, 6, "[Imagem sem URL registrada]", 0, 1, "L")
+                    continue
+
+                if url.startswith("http://") or url.startswith("https://"):
+                    resp = requests.get(url, timeout=15)
+                    resp.raise_for_status()
+                    image_source = BytesIO(resp.content)
+                elif os.path.exists(url):
+                    image_source = url
                 else:
-                    pdf.cell(0, 6, f"[Imagem não encontrada: {path}]", 0, 1, "L")
+                    pdf.cell(0, 6, f"[Imagem não encontrada: {url}]", 0, 1, "L")
+                    continue
+
+                pdf.ln(5)
+                pdf.cell(
+                    0, 6,
+                    f"Frame {frame_info.get('frame_number', '?')} - {frame_info.get('timestamp_ms', 0)}ms",
+                    0, 1, "L"
+                )
+                pdf.cell(
+                    0, 6,
+                    f"Emoção: {frame_info.get('emocao', 'N/A')}, Engajamento: {frame_info.get('engajamento', 'N/A')}",
+                    0, 1, "L"
+                )
+                pdf.image(image_source, x=pdf.l_margin, w=pdf.w - 2 * pdf.l_margin, h=60)
+                pdf.ln(2)
+                pdf.cell(0, 1, "_" * 100, 0, 1, "L")
             except Exception as e:
                 pdf.cell(0, 6, f"Erro ao renderizar imagem: {e}", 0, 1, "L")
 

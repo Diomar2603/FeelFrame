@@ -32,7 +32,6 @@ Flask==3.1.2
 flask-cors==6.0.1
 flatbuffers==25.9.23
 fonttools==4.60.1
-fpdf==1.7.2
 fpdf2==2.8.5
 fsspec==2025.10.0
 gast==0.6.0
