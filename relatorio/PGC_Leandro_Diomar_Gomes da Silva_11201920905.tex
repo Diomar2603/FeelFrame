@@ -184,7 +184,7 @@ Neste contexto, o \textbf{FeelFrame} é proposto como um sistema web completo qu
 
 A análise manual de expressões faciais em vídeos é um processo trabalhoso, subjetivo e não escalável. As ferramentas comerciais existentes (como o iMotions e o Affectiva) têm custo elevado e não oferecem abertura técnica para customização. Ferramentas de código aberto, por sua vez, exigem conhecimento técnico avançado para configuração e não possuem interface amigável.
 
-O problema central deste trabalho é: \textit{Como transformar o algoritmo de detecção de emoções e engajamento desenvolvido por Nelson Nascimento  \cite{nascimento2024nelson} --- concebido para uso local --- em um produto de software web acessível, escalável e utilizável por qualquer pessoa sem conhecimento técnico especializado, sem sacrificar o rigor analítico da pesquisa original?}
+O problema central deste trabalho é: \textit{Como trabalhando baseado no algoritmo de detecção de emoções e engajamento desenvolvido por Nelson Nascimento  \cite{nascimento2024nelson} em um produto de software web acessível, escalável e utilizável por qualquer pessoa sem conhecimento técnico especializado, sem sacrificar o rigor analítico da pesquisa original?}
 
 \section{OBJETIVOS}
 
@@ -195,7 +195,11 @@ Desenvolver o sistema \textbf{FeelFrame}: uma aplicação web completa para aná
 \subsection{Objetivos Específicos}
 
 \begin{itemize}
+    \item Classificar o nivel de engajamento dos estudantes;
+    
     \item Implementar um pipeline de processamento de vídeo capaz de extrair frames, detectar rostos e classificar emoções;
+
+    
     \item Desenvolver um back-end RESTful com suporte a processamento assíncrono e acompanhamento de progresso em tempo real via Server-Sent Events (SSE);
     \item Criar um front-end responsivo com interface estilo editor de vídeo e linha do tempo de emoções;
     \item Implementar um sistema de autenticação seguro com suporte a email/senha;
@@ -210,7 +214,7 @@ O FeelFrame se justifica em múltiplas frentes:
 
 \textbf{Acadêmica}: Contribui para a pesquisa em reconhecimento afetivo computacional (\textit{affective computing}), área fundada por Rosalind Picard \cite{picard1997affective}, ao implementar um sistema integrado e funcional.
 
-\textbf{Educacional}: O sistema atua como uma ferramenta de testes de usabilidade e avaliação pedagógica, permitindo entender como os objetos de aprendizagem e jogos educacionais podem engajar ou não o público-alvo. Isso é feito baseando-se em evidências emocionais e comportamentais extraídas de sessões de teste controladas, indicando em quais pontos exatos a tecnologia falha em manter o interesse.
+\textbf{Educacional}: O sistema atua como uma ferramenta de testes de usabilidade e avaliação pedagógica, permitindo entender como os objetos de aprendizagem e jogos educacionais podem engajar ou não o público-alvo a fim de ajudar na aprendizagem dos alunos. Isso é feito baseando-se em evidências emocionais e comportamentais extraídas de sessões de teste controladas, indicando em quais pontos exatos a tecnologia falha em manter o interesse.
 
 \textbf{Técnica}: O trabalho demonstra a integração de tecnologias modernas (DeepFace, MediaPipe, FastAPI, React, MongoDB, Firebase) em um produto coeso e funcional.
 
@@ -266,6 +270,30 @@ Este documento está organizado da seguinte forma: o Capítulo \ref{cap:referenc
 \chapter{REFERENCIAL TEÓRICO}
 \label{cap:referencial}
 % ==========================================================
+
+\section{Dinâmica das Emoções e Engajamento}
+
+A compreensão do estado afetivo vai além do reconhecimento estático de expressões discretas, exigindo a análise da trajetória temporal dessas emoções. Compreender o engajamento de um indivíduo durante uma atividade pode contribuir significativamente para garantir que os objetivos da interação sejam plenamente atingidos. Em ambientes tradicionais e digitais, esse engajamento pode ser observado tanto por meio da linguagem corporal quanto pelas emoções faciais.
+
+A determinação precisa do nível de envolvimento de um usuário tem se mostrado um desafio complexo, exigindo abordagens abrangentes. Modelos híbridos que combinam a coleta automática de expressões e posturas físicas com dados de autorrelatos (como pré e pós-questionários) oferecem um mapeamento mais robusto do perfil e das sensações experimentadas. A estruturação dessas avaliações baseia-se fortemente em pilares da psicologia e computação afetiva:
+\begin{itemize}
+    \item A utilização de bases como a Teoria das Seis Emoções Básicas e o Modelo Circumplexo de Russell;
+    \item A estruturação de uma representação da dinâmica das emoções, focada na alternância contínua de estados afetivos;
+    \item A percepção empírica de que o engajamento é essencialmente contextual e temporal;
+    \item O entendimento de que o engajamento muitas vezes é menos proeminente ou explícito apenas na face do usuário;
+    \item A constatação de que, antes de se desengajar completamente de um processo, o usuário transita por estados afetivos intermediários;
+    \item A evidência de que o desengajamento ocorre de forma acentuada quando o indivíduo enfrenta dificuldades em manter o controle das ações ou interações propostas.
+\end{itemize}
+
+Dentro do escopo do FeelFrame, a fusão das métricas extraídas (como direção do olhar, abertura dos olhos e pose da cabeça) com a classificação afetiva cria as bases para a inferência dessa métrica complexa.
+
+\section{Arquitetura de Software para Análise Contínua}
+
+A eficácia de um sistema de visão computacional não depende exclusivamente da precisão de seus modelos, mas da infraestrutura tecnológica projetada para orquestrar o processamento. A manipulação de fluxos de vídeo e a execução paralela de algoritmos pesados de inferência requerem uma arquitetura reativa, escalável e de alto desempenho.
+
+A integração dos detectores de face e classificadores de emoção demanda um \textit{back-end} capaz de gerenciar requisições assíncronas de forma otimizada, utilizando frameworks de alta performance como FastAPI. Simultaneamente, o volume de dados contínuos gerado pela análise \textit{frame a frame} --- contendo metadados de marcos faciais (\textit{landmarks}), poses de cabeça e intensidades emocionais --- requer um armazenamento ágil. Bancos de dados não relacionais e orientados a documentos, como o MongoDB ou Firebase, aderem perfeitamente a esse modelo, permitindo a ingestão rápida de séries temporais não rígidas.
+
+Na ponta da interação, o consumo desses metadados processados deve ser traduzido em painéis visuais intuitivos. A construção de uma interface de usuário rica e componentizada, empregando bibliotecas modernas de \textit{front-end} como React, viabiliza a renderização de gráficos em tempo real, permitindo uma interpretação clara da dinâmica de atenção e das métricas emocionais geradas pelo sistema.
 
 \section{Visão Computacional}
 
@@ -350,7 +378,7 @@ A utilização deste referencial no módulo de relatórios do FeelFrame permite 
 
 \subsection{UMAP -- Redução de Dimensionalidade}
 
-O UMAP (\textit{Uniform Manifold Approximation and Projection}) \cite{mcinnes2018umap} é um algoritmo avançado que reduz a complexidade dos dados de forma mais eficiente que o t-SNE. No FeelFrame, ele é usado opcionalmente no módulo de relatório para transformar todas as métricas de frame em gráficos 2D ou 3D. Isso agrupa visualmente os comportamentos semelhantes, permitindo identificar rapidamente os padrões de engajamento no vídeo.
+O UMAP (\textit{Uniform Manifold Approximation and Projection}) \cite{mcinnes2018umap} é um algoritmo avançado que reduz a complexidade dos dados de forma mais eficiente que o t-SNE. No FeelFrame, ele está implementado no \texttt{RelatorioService} para projetar as sete \textit{features} contínuas de cada frame (pose de cabeça, olhar e confiança de emoção) em espaços 2D e 3D, agrupando visualmente comportamentos semelhantes e permitindo, em tese, identificar rapidamente padrões e \textit{clusters} de engajamento no vídeo. Na versão atual do sistema, essa etapa está implementada como método isolado mas ainda não é chamada automaticamente durante a geração do relatório em PDF -- os detalhes dessa integração pendente são discutidos na Seção~\ref{sec:graficos_relatorio}.
 
 % ==========================================================
 \chapter{REVISÃO DE LITERATURA}
@@ -544,6 +572,49 @@ Onde \texttt{score\_dimensao} varia de 5 (Distraído) a 70 (Concentrado), e \tex
     \item \textbf{Altamente Desengajado}: score < 30.
 \end{itemize}
 
+\section{Calibração e Ajustes do Espectro Emocional}
+\label{sec:calibracao_espectro}
+
+O algoritmo original de Nascimento Junior \cite{nascimento2024nelson} não foi concebido como uma fórmula fixa e imutável, mas como um conjunto de regras heurísticas calibradas empiricamente sobre uma base de vídeos de controle, com pesos e limiares passíveis de ajuste conforme o domínio de aplicação e o perfil dos sujeitos analisados. O FeelFrame herda essa mesma filosofia: em vez de embutir um classificador único e monolítico, o \texttt{FaceAnalyzer} expõe um conjunto de constantes de calibração que determinam como sinais brutos de visão computacional (emoção, pose de cabeça, olhar, abertura dos olhos) são traduzidos em categorias discretas de engajamento. Essa característica é central para a continuidade científica do trabalho, pois permite que futuros pesquisadores recalibrem o sistema sem alterar sua arquitetura.
+
+\subsection{Parâmetros Ajustáveis Identificados}
+
+A Tabela~\ref{tab:calibracao} sintetiza os principais parâmetros de calibração do espectro emocional presentes na implementação atual, seus valores padrão e o efeito de sua variação.
+
+\begin{table}[H]
+\centering
+\caption{Parâmetros de calibração do espectro emocional e de engajamento}
+\label{tab:calibracao}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|p{7.5cm}|}
+\hline
+\textbf{Parâmetro} & \textbf{Valor padrão} & \textbf{Efeito de ajuste} \\ \hline
+\texttt{SAD\_TO\_NEUTRAL\_THRESHOLD} & 20 & Eleva ou reduz a sensibilidade da correção heurística de falsos positivos de ``Triste''/raiva/nojo; valores mais altos reclassificam mais frames ambíguos como Neutro \\ \hline
+\texttt{SECOND\_EMOTION\_THRESHOLD} & 15,0 & Define a partir de qual diferença de score uma emoção secundária passa a ser considerada relevante na análise, afetando a granularidade de estados afetivos mistos \\ \hline
+\texttt{OLHOS\_FECHADOS\_THRESHOLD} (EAR) & 0,2 & Sensibilidade da detecção de olhos fechados; valores menores toleram mais piscadas antes de classificar o frame como \texttt{INDEFINIDO\_DISTRAIDO} \\ \hline
+Pesos de \texttt{score\_emocao} & Feliz +40, Surpreso +30, Neutro +20, Triste/Medo −10 & Determinam o peso de cada categoria emocional na pontuação final de engajamento; alterá-los desloca a fronteira entre estados considerados positivos e negativos \\ \hline
+Pesos de \texttt{score\_dimensao} & Concentrado 70, Indefinido/Concentrado 55, Indefinido/Distraído 30, Distraído 5 & Determinam o peso da dimensão comportamental (pose/olhar) frente à dimensão emocional na composição do score final \\ \hline
+Limiar de estado de fluxo & confiança $\geq$ 0,35 & Controla a facilidade com que o sistema classifica um frame como estado de \textit{Flow} \cite{csikszentmihalyi1990flow} \\ \hline
+Limiares de classificação de engajamento & 80 / 55 / 30 & Definem as fronteiras entre Altamente Engajado, Engajado, Desengajado e Altamente Desengajado \\ \hline
+\texttt{FRAME\_ANALYSIS\_SKIP\_RATE} & 1 & Taxa de amostragem de frames analisados; valores maiores reduzem custo computacional ao custo de granularidade temporal \\ \hline
+Limiares do detector YuNet & \texttt{score\_threshold=0,65}, \texttt{nms\_threshold=0,3} & Controlam a sensibilidade e a supressão de detecções redundantes de rosto \\ \hline
+\end{tabular}%
+}
+\fonte{O Autor (2026)}
+\end{table}
+
+\subsection{Possibilidades de Recalibração e Continuidade da Pesquisa}
+
+Assim como Nascimento Junior \cite{nascimento2024nelson} calibrou seu algoritmo original sobre uma base de vídeos de controle específica, o FeelFrame foi calibrado com uma base de dados externa distinta, o que, conforme discutido na Seção~\ref{sec:resultados_comparacao}, produziu boa concordância geral mas reduziu a sensibilidade a categorias pouco representadas, como \textit{Medo} e \textit{Surpreso}. Essa observação, alinhada aos achados da pesquisa de base, reforça que o espectro emocional de um sistema como o FeelFrame não deve ser tratado como definitivo, mas como um ponto de partida ajustável. Direções concretas de recalibração para trabalhos futuros incluem:
+
+\begin{itemize}
+    \item \textbf{Recalibração por domínio de aplicação}: ajustar os pesos de \texttt{score\_emocao} e \texttt{score\_dimensao} separadamente para diferentes contextos de uso (jogos educacionais, aulas expositivas, entrevistas), retomando a proposta original de Nascimento Junior \cite{nascimento2024nelson} de tratar o engajamento como fenômeno contextual, e não universal;
+    \item \textbf{Validação estatística dos limiares}: hoje os limiares de 80/55/30 para classificação de engajamento e o limiar de 0,35 para estado de fluxo são valores heurísticos herdados do algoritmo de base; um trabalho futuro poderia empregar validação cruzada com autorrelatos de usuários (questionários pré/pós-sessão, nos mesmos moldes sugeridos por \cite{nascimento2024nelson} e discutidos na Seção~\ref{sec:modelo_engajamento}) para ajustar esses cortes estatisticamente;
+    \item \textbf{Expansão do espectro de emoções}: atualmente as sete emoções do DeepFace são condensadas em cinco categorias (Feliz, Triste, Surpreso, Medo, Neutro), com raiva e nojo mapeadas para Triste. Um trabalho de continuidade alinhado à base teórica de Ekman \cite{ekman1971constants} e ao próprio referencial de \cite{nascimento2024nelson} poderia investigar a manutenção de raiva e nojo como categorias distintas, avaliando o impacto na precisão do score de engajamento;
+    \item \textbf{Recalibração do dataset de emoção}: como discutido na Seção~\ref{sec:resultados_comparacao}, o dataset de calibração do FeelFrame difere do utilizado por Nascimento Junior; um estudo comparativo sistemático, com \textit{fine-tuning} do classificador de emoções sobre vídeos do domínio de OAs (objetos de aprendizagem) coletados especificamente para esse fim, tende a aproximar ainda mais os resultados do FeelFrame da pesquisa original que o fundamenta;
+    \item \textbf{Parametrização exposta ao usuário}: nenhum dos parâmetros da Tabela~\ref{tab:calibracao} é hoje configurável via interface ou API -- todos exigem alteração direta do código-fonte do \texttt{FaceAnalyzer}. Expô-los como configuração por projeto (por exemplo, via um documento de configuração associado a cada vídeo ou usuário) permitiria que pesquisadores calibrassem o espectro emocional para seus próprios estudos sem depender de alterações de código, favorecendo diretamente a continuidade científica do trabalho de \cite{nascimento2024nelson}.
+\end{itemize}
+
 \section{API RESTful (Back-end)}
 
 O back-end é organizado em módulos de rotas, serviços, modelos e utilitários, seguindo o princípio de separação de responsabilidades.
@@ -561,11 +632,13 @@ O back-end é organizado em módulos de rotas, serviços, modelos e utilitários
 POST            & /autenticacao/registrar                                            & Cadastro com email e senha                    \\ \hline
 POST            & /autenticacao/entrar                                               & Login com email e senha                       \\ \hline
 GET             & /autenticacao/perfil                                                  & Dados do usuário autenticado                  \\ \hline
-POST            & /arquivos/enviar/                                            & Upload de vídeo (processamento em background) \\ \hline
+POST            & /arquivos/enviar/                                            & Upload de vídeo único (processamento em background) \\ \hline
+POST            & /arquivos/enviar-multiplos/                                  & Upload de múltiplos vídeos em uma única requisição \\ \hline
 GET             & /arquivos/progresso/\{id\}                        & SSE de progresso do processamento             \\ \hline
 GET             & /arquivos/dados/\{id\}                                  & Dados e timeline de análise do vídeo          \\ \hline
 GET             & /arquivos/videos/                                            & Lista de vídeos do usuário autenticado        \\ \hline
 DELETE          & /arquivos/videos/\{id\}                                      & Remove projeto e dados relacionados (cascata) \\ \hline
+GET             & /arquivos/status/                                            & Health-check: capacidade de processamento, formatos suportados e backend de armazenamento ativo \\ \hline
 GET             & /arquivos/videos/\{id\}/markers                              & Lista marcadores da timeline do vídeo         \\ \hline
 POST            & /arquivos/videos/\{id\}/markers                              & Adiciona marcador em instante específico       \\ \hline
 PATCH           & /arquivos/marcadores/\{id\}                                     & Atualiza cor ou rótulo de um marcador         \\ \hline
@@ -575,6 +648,8 @@ POST            & /relatorios/\{video\_id\}                                 & Ge
 }
 \fonte{O Autor (2026)}
 \end{table}
+
+\textbf{Nota sobre autenticação via Google}: o back-end ainda expõe a rota \texttt{POST /autenticacao/google} e o campo \texttt{google\_id} no documento de usuário (Apêndice~B), herdados de uma etapa anterior do desenvolvimento em que o login social estava disponível. A opção de login via Google foi removida da interface do front-end por decisão de produto, mas o endpoint permanece ativo no back-end para uso programático ou reativação futura, constituindo um ponto de atenção documentado na Seção~\ref{sec:limitacoes}.
 
 \subsection{Progresso em Tempo Real com SSE}
 
@@ -602,16 +677,49 @@ O \texttt{RelatorioService} é responsável pela geração de relatórios em PDF
 Para cada vídeo, o relatório calcula e apresenta a evolução dos níveis de engajamento conforme o modelo teórico descrito na Seção~\ref{sec:modelo_engajamento}. A análise permite gerar uma linha do tempo do estado do usuário, relacionando a dimensão comportamental com as valências emocionais, permitindo verificar a consistência das métricas e identificar os pontos de ruptura do fluxo.
 
 \subsection{Gráficos Temporais e Distributivos}
+\label{sec:graficos_relatorio}
 
-O relatório inclui os seguintes elementos visuais, todos gerados com Plotly e exportados como imagens PNG:
+Todos os gráficos do relatório são gerados com a biblioteca Plotly, renderizados como imagem PNG (\texttt{fig.write\_image}, resolução $1000\times450$) e inseridos em páginas dedicadas do PDF final. O documento é montado em orientação paisagem (\texttt{FPDF(orientation="L")}) para acomodar a largura dos gráficos temporais. A seguir, cada elemento visual é detalhado individualmente, incluindo o que especificamente cada um permite ao leitor do relatório analisar.
 
+\paragraph{a) Gráficos de barras empilhadas temporais (4 gráficos).}
+São gerados quatro gráficos de barras 100\% empilhadas horizontalmente -- \textbf{Engajamento Temporal}, \textbf{Comportamento Temporal}, \textbf{Emoção Temporal} e \textbf{Fluxo Temporal} --, cada um formado por uma barra por \texttt{frame\_number} do vídeo, sem espaçamento entre barras (\texttt{bargap=0}), de modo que o conjunto forma visualmente uma linha do tempo contínua e colorida (a mesma paleta de cores das categorias usada na timeline do editor, Seção~\ref{cap:desenvolvimento}, é reaproveitada aqui para consistência visual entre a interface e o PDF). Cada um permite uma leitura específica:
 \begin{itemize}
-    \item \textbf{Gráficos de barras empilhadas temporais}: um para cada dimensão de análise (engajamento, comportamento, emoção e estado de fluxo), onde cada coluna representa um frame e a cor indica a categoria detectada. A linha do tempo visual resultante permite identificar momentos de transição de estado;
-    \item \textbf{Gráficos de pizza (distribuição percentual)}: resumem a proporção de frames em cada categoria, facilitando comparações rápidas;
-    \item \textbf{Painel de validação cruzada}: \textit{boxplots} que correlacionam o nível de atenção com o engajamento geral e a emoção.
+    \item \textit{Engajamento Temporal} -- mostra a alternância entre Altamente Engajado, Engajado, Desengajado e Altamente Desengajado ao longo de todo o vídeo, permitindo localizar visualmente blocos de baixo engajamento sem precisar assistir ao vídeo inteiro;
+    \item \textit{Comportamento Temporal} -- evidencia os períodos de atenção comportamental (Concentrado / Distraído e seus estados intermediários indefinidos), útil para correlacionar mudanças de postura/olhar com o conteúdo exibido no instante correspondente;
+    \item \textit{Emoção Temporal} -- expõe a sequência de emoções básicas detectadas quadro a quadro, permitindo identificar reações pontuais (por exemplo, um pico breve de Surpreso ou Feliz em um instante específico do objeto de aprendizagem);
+    \item \textit{Fluxo Temporal} -- é um gráfico binário (\texttt{True}/\texttt{False}) que marca exatamente os frames em que o estado de \textit{Flow} \cite{csikszentmihalyi1990flow} foi detectado, permitindo localizar precisamente onde o usuário esteve imerso na atividade.
 \end{itemize}
+Quando o vídeo possui marcadores de timeline (Seção~\ref{cap:desenvolvimento}), cada um dos quatro gráficos recebe uma linha vertical tracejada na posição correspondente (com a mesma cor e rótulo definidos pelo usuário no editor), permitindo correlacionar diretamente um evento anotado manualmente (ex.: ``início do desafio 2'') com o estado emocional/comportamental detectado automaticamente naquele instante.
 
-O relatório também lista os \textbf{momentos de destaque}: períodos do vídeo onde mais de 75\% dos frames em um segundo foram classificados como ``Engajado'' ou ``Altamente Engajado'' (alta concentração), e períodos onde mais de 75\% foram classificados como ``Altamente Desengajado'' (risco de perda de atenção). Opcionalmente, o UMAP \cite{mcinnes2018umap} pode ser aplicado sobre as sete features de cada frame para gerar projeções 2D/3D de clusters comportamentais.
+\paragraph{b) Gráficos de pizza -- distribuição percentual (4 gráficos).}
+Complementam os gráficos temporais com uma visão agregada: \textbf{Engajamento \%}, \textbf{Comportamento \%}, \textbf{Emoção \%} e \textbf{Fluxo \%} mostram a proporção de frames do vídeo inteiro classificados em cada categoria. Enquanto os gráficos de barras respondem \textit{``quando''} algo aconteceu, os gráficos de pizza respondem \textit{``quanto''} do vídeo cada estado ocupou -- por exemplo, permitem afirmar que 62\% do tempo o usuário esteve ``Engajado'' ou que 8\% dos frames caíram em estado de \textit{Flow}, uma métrica-resumo útil para comparar rapidamente vídeos/sessões de teste diferentes de um mesmo objeto de aprendizagem.
+
+\paragraph{c) Timeline de Atenção e Satisfação (proxies ARCS).}
+Além dos gráficos categóricos acima, o relatório calcula duas métricas contínuas em escala 0--100 inspiradas nas dimensões de Atenção e Satisfação do modelo ARCS de Keller \cite{keller1987arcs}, plotadas como duas linhas sobrepostas em função do tempo (em milissegundos), com marcadores de timeline também sobrepostos como linhas verticais:
+\begin{itemize}
+    \item \textbf{Atenção}: calculada como o inverso do desvio absoluto do \textit{yaw} e do \textit{pitch} da cabeça em relação à \textbf{mediana} desses ângulos para o próprio vídeo (isto é, ao ``centro habitual'' da cabeça do usuário durante a sessão, não a um ângulo absoluto de câmera), normalizado para o intervalo [0, 90] graus de desvio e invertido em uma escala 0--100 -- quanto mais próxima do centro habitual, maior a atenção. Frames com confiança de emoção abaixo de 0,50 têm a atenção zerada, pois indicam detecção facial pouco confiável naquele instante;
+    \item \textbf{Satisfação}: calculada como $100 \times \text{confiança}$ quando a emoção do frame é Feliz, $50 \times \text{confiança}$ quando é Neutro, e 0 para as demais categorias -- uma proxy de valência positiva ponderada pela confiança da detecção.
+\end{itemize}
+Esse gráfico permite observar a \textbf{trajetória contínua} do estado afetivo do usuário (em vez de apenas categorias discretas), sendo particularmente útil para identificar tendências graduais de queda de atenção ou satisfação ao longo do vídeo, que podem não ser óbvias nos gráficos de barras categóricos.
+
+\paragraph{d) Painel de validação cruzada.}
+É um painel com dois \textit{boxplots} lado a lado, gerado com \texttt{plotly.subplots}: o primeiro relaciona a \textbf{Atenção} (proxy ARCS) com a categoria de \textbf{engajamento} detectada em cada frame (eixo X: Altamente Engajado / Engajado / Desengajado / Altamente Desengajado; eixo Y: score de atenção), e o segundo relaciona a \textbf{Satisfação} (proxy ARCS) com a categoria de \textbf{emoção} detectada (eixo X: Feliz / Triste / Neutro / Surpreso / Medo; eixo Y: score de satisfação). Esse painel serve como uma checagem de consistência interna do próprio modelo: se a heurística de engajamento e as proxies ARCS estão coerentes, espera-se que os \textit{boxplots} de atenção sejam visivelmente mais altos para as categorias ``Engajado''/``Altamente Engajado'' do que para ``Desengajado''/``Altamente Desengajado'', e o mesmo para satisfação em relação a ``Feliz'' frente às demais emoções -- divergências nesse padrão sinalizam possíveis inconsistências de calibração (Seção~\ref{sec:calibracao_espectro}) a serem investigadas.
+
+\subsection{Momentos de Destaque e Cenas Capturadas}
+
+Além dos gráficos, o relatório calcula e lista textualmente os \textbf{momentos de destaque} do vídeo, agrupando segundos consecutivos em períodos contínuos (\texttt{início--fim} em segundos) segundo três critérios aplicados por segundo de vídeo:
+\begin{itemize}
+    \item \textbf{Alta concentração}: mais de 75\% dos frames daquele segundo classificados como ``Engajado'' ou ``Altamente Engajado'';
+    \item \textbf{Alto desengajamento}: mais de 75\% dos frames classificados como ``Altamente Desengajado'' -- sinaliza risco concreto de perda de atenção naquele trecho do objeto de aprendizagem;
+    \item \textbf{Estado de fluxo}: mais de 50\% dos frames daquele segundo com \texttt{estado\_fluxo=True} -- um limiar mais permissivo que os dois anteriores, pois o \textit{Flow} \cite{csikszentmihalyi1990flow} é interpretado como um estado mais raro e valioso de ser capturado mesmo quando não domina o segundo inteiro.
+\end{itemize}
+Esses três critérios permitem que o leitor do relatório vá diretamente aos instantes mais relevantes do vídeo (positivos ou negativos) sem precisar assistir à gravação inteira -- uma funcionalidade central para o uso pedagógico do FeelFrame descrito na Justificativa (Seção~1.3).
+
+Adicionalmente, quando frames de destaque (coleção \texttt{frames\_destaque}) foram capturados durante o processamento -- para os tipos \texttt{fluxo} e \texttt{desengajamento} --, o relatório inclui até 6 imagens de cada tipo diretamente no PDF, cada uma acompanhada do número do frame, do \textit{timestamp}, da emoção e do nível de engajamento detectados naquele instante. Essas imagens são recuperadas da URL pública salva no backend de armazenamento (Firebase ou local, conforme a Seção~\ref{cap:desenvolvimento}) no momento da geração do relatório, permitindo uma inspeção visual direta dos instantes mais relevantes sem reabrir o vídeo original.
+
+\subsection{Redução de Dimensionalidade com UMAP: Status Atual}
+
+Conforme descrito na Seção~\ref{sec:modelo_engajamento} (referencial teórico), o \texttt{RelatorioService} implementa os métodos \texttt{calcular\_umap()} (projeções 2D e 3D via \texttt{umap-learn}, sobre as sete \textit{features} contínuas de pose de cabeça, olhar e confiança de emoção) e as proxies ARCS descritas acima. É importante registrar, para fins de precisão técnica e de continuidade do trabalho, que \textbf{a chamada ao UMAP não está atualmente integrada ao fluxo automático de geração do PDF} (\texttt{gerar\_relatorio\_pdf}): apenas as proxies de Atenção/Satisfação e o painel de validação cruzada são chamados e exportados por padrão. O método de UMAP permanece implementado e funcional, mas seu acionamento e a exportação de suas projeções 2D/3D como gráfico do relatório ficam como uma integração pendente, listada explicitamente nos Trabalhos Futuros (Seção~\ref{sec:trabalhos_futuros}) como um item de baixo esforço e alto valor analítico para a continuidade científica do projeto.
 
 \section{Front-end React}
 
@@ -676,6 +784,22 @@ O layout é adaptado para diferentes tamanhos de tela via media queries CSS:
     \item \textbf{Mobile} ($\leq 768$px): Monitores empilhados verticalmente, header em duas linhas, scroll habilitado.
 \end{itemize}
 
+\section{Funcionalidades Adicionais}
+
+Além dos módulos centrais já descritos, o FeelFrame conta com um conjunto de funcionalidades de suporte que contribuem para a robustez, a operação e a extensibilidade do sistema, mas que não se enquadram diretamente no pipeline de análise ou na interface do editor:
+
+\begin{itemize}
+    \item \textbf{Upload em lote}: além do envio de um único vídeo (\texttt{POST /arquivos/enviar/}), o back-end oferece o endpoint \texttt{POST /arquivos/enviar-multiplos/}, que aceita múltiplos arquivos em uma única requisição HTTP \textit{multipart}, cada um sendo registrado e processado em background de forma independente. Essa funcionalidade é útil em cenários de avaliação pedagógica em que diversas sessões de teste com o mesmo objeto de aprendizagem precisam ser enviadas de uma só vez;
+
+    \item \textbf{Abstração de armazenamento (\textit{Storage Strategy})}: o serviço de persistência de arquivos foi projetado com um padrão \textit{Strategy}, implementado em \texttt{storageFactory.py}, que permite alternar entre o \texttt{FirebaseStorageService} (produção) e um \texttt{LocalStorageService} (armazenamento em disco/volume Docker) por meio da variável de ambiente \texttt{STORAGE\_BACKEND}. Essa abstração desacopla o pipeline de processamento do provedor de armazenamento e viabiliza a execução completa do sistema em ambiente local ou de testes automatizados, sem exigir credenciais do Firebase;
+
+    \item \textbf{Endpoint de status/\textit{health-check}}: a rota \texttt{GET /arquivos/status/} expõe informações operacionais do serviço, como o número máximo de processamentos concorrentes (\texttt{VIDEO\_POOL\_WORKERS}), os formatos de vídeo suportados e o backend de armazenamento atualmente ativo, permitindo diagnóstico rápido do estado do back-end sem a necessidade de acesso a logs;
+
+    \item \textbf{Sistema de notificações (\textit{toasts})}: o front-end implementa um mecanismo de notificações não bloqueantes (mensagens temporárias de sucesso, erro ou aviso) exibidas sobre a interface do editor, utilizado para feedback imediato de ações como exclusão de projeto, aplicação de edição em lote de emoções ou falhas de upload, sem interromper o fluxo de uso com caixas de diálogo modais;
+
+    \item \textbf{Seleção por arraste unificada}: o mecanismo de \textit{drag-to-select} da linha do tempo (Seção~\ref{cap:desenvolvimento}) é reutilizado tanto para a criação de marcadores em um intervalo quanto para a substituição em lote de emoções, compartilhando a mesma lógica de cálculo de posição relativa e o mesmo componente de \textit{overlay} visual.
+\end{itemize}
+
 % ==========================================================
 \chapter{METODOLOGIA}
 \label{cap:metodologia}
@@ -732,7 +856,7 @@ O sistema foi avaliado segundo os seguintes critérios:
 \begin{enumerate}
     \item \textbf{Funcionalidade}: Todos os fluxos principais (cadastro, login, upload, análise, visualização, relatório) devem funcionar sem erros;
     \item \textbf{Desempenho}: Tempo médio de processamento por frame e tempo total para vídeos de diferentes durações;
-    \item \textbf{Precisão}: Comparação qualitativa das emoções detectadas com a percepção humana em vídeos de teste;
+    \item \textbf{Precisão}: Comparação qualitativa das emoções detectadas com a percepção humana em vídeos de teste e seu uso para geração de dados precisos para analise de engajamento;
     \item \textbf{Usabilidade}: Clareza da interface e facilidade de uso por usuários sem conhecimento técnico;
     \item \textbf{Comparação com o algoritmo base}: Análise da concordância entre os relatórios gerados pelo FeelFrame e pelo algoritmo original de Prof. Nelson Nascimento \cite{nascimento2024nelson}, processando os mesmos vídeos de teste em ambos os sistemas e confrontando as distribuições de emoções e momentos de engajamento detectados.
 \end{enumerate}
@@ -822,13 +946,17 @@ As \textbf{principais divergências} observadas decorrem de dois fatores:
 Conclui-se que o FeelFrame apresenta resultados analiticamente equivalentes ao algoritmo original em termos de identificação dos padrões emocionais e comportamentais predominantes, com a vantagem adicional de ser acessível via navegador web e de oferecer funcionalidades de edição, marcadores e relatórios que o sistema original não possuía.
 
 \section{Limitações}
+\label{sec:limitacoes}
 
 \begin{itemize}
     \item \textbf{Tempo de processamento}: O processamento em CPU é lento para vídeos longos. A integração com GPU ou o uso de modelos mais leves aceleraria significativamente;
     \item \textbf{Condições de iluminação}: Vídeos com iluminação ruim degradam a detecção de marcos faciais;
     \item \textbf{Oclusão}: Rostos parcialmente cobertos (máscara, mão) causam falhas na detecção;
     \item \textbf{Uma face por vídeo}: O sistema analisa apenas um rosto por frame. Vídeos com múltiplas pessoas não são suportados atualmente;
-    \item \textbf{Viés dos dados}: Os modelos do DeepFace foram treinados em conjuntos com predominância de rostos ocidentais, podendo ter performance reduzida em outros grupos étnicos.
+    \item \textbf{Viés dos dados}: Os modelos do DeepFace foram treinados em conjuntos com predominância de rostos ocidentais, podendo ter performance reduzida em outros grupos étnicos;
+    \item \textbf{Parâmetros de calibração fixos no código}: conforme discutido na Seção~\ref{sec:calibracao_espectro}, os pesos e limiares do espectro emocional e de engajamento não são configuráveis via interface, exigindo alteração direta do código-fonte para recalibração;
+    \item \textbf{Resquício de autenticação via Google no back-end}: a rota \texttt{POST /autenticacao/google} e o campo \texttt{google\_id} permanecem implementados no back-end mesmo após a remoção da opção de login social do front-end, representando um ponto de inconsistência entre as duas camadas que deve ser resolvido -- removendo o endpoint ou reabilitando a funcionalidade -- em uma iteração futura;
+    \item \textbf{CORS irrestrito em ambiente de deploy}: a configuração \texttt{allow\_origins=["*"]} do FastAPI (ver Apêndice de Deploy), adequada para desenvolvimento, deve ser restringida aos domínios finais antes de qualquer uso do sistema além do escopo acadêmico deste PGC.
 \end{itemize}
 
 % ==========================================================
@@ -844,11 +972,12 @@ As principais contribuições técnicas do trabalho foram:
     \item Integração coesa das bibliotecas DeepFace, MediaPipe FaceMesh e OpenCV YuNet em um pipeline assíncrono e \textit{thread-safe}, com detecção EAR de olhos fechados e estratégia de recorte fixo;
     \item Implementação de Server-Sent Events para acompanhamento de progresso em tempo real, sem necessidade de \textit{polling};
     \item Desenvolvimento de uma interface web responsiva com linha do tempo emocional interativa, edição em lote de emoções (\textit{drag-to-select} + \textit{bulk update} transacional) e marcadores persistidos;
-    \item Módulo de relatório alicerçado no modelo de engajamento, gráficos Plotly e análise UMAP \cite{mcinnes2018umap} opcional de clusters comportamentais;
+    \item Módulo de relatório alicerçado no modelo de engajamento, com gráficos temporais e distributivos em Plotly, proxies contínuas de Atenção e Satisfação inspiradas no modelo ARCS \cite{keller1987arcs}, painel de validação cruzada e captura de cenas de destaque, além de um método de análise UMAP \cite{mcinnes2018umap} de clusters comportamentais já implementado e pendente apenas de integração ao fluxo automático do relatório;
     \item Sistema de autenticação completo com suporte a email/senha, com vinculação de vídeos por usuário.
 \end{enumerate}
 
 \section{TRABALHOS FUTUROS}
+\label{sec:trabalhos_futuros}
 
 Múltiplas direções de pesquisa e desenvolvimento podem ser exploradas como continuação deste trabalho:
 
@@ -860,7 +989,10 @@ Múltiplas direções de pesquisa e desenvolvimento podem ser exploradas como co
     \item \textbf{Modelos customizados}: Fine-tuning de modelos de emoção em conjuntos de dados específicos do domínio de aplicação (e.g., aulas, entrevistas de emprego);
     \item \textbf{Painel analítico}: Dashboard com estatísticas agregadas, gráficos de distribuição emocional e comparação entre múltiplos vídeos;
     \item \textbf{API pública}: Disponibilização de uma API documentada para integração com plataformas de EAD, videoconferência e ferramentas de pesquisa;
-    \item \textbf{Avaliação com usuários}: Estudo formal de usabilidade com participantes reais para validar a interface e a utilidade percebida do sistema.
+    \item \textbf{Avaliação com usuários}: Estudo formal de usabilidade com participantes reais para validar a interface e a utilidade percebida do sistema;
+    \item \textbf{Recalibração do espectro emocional}: conforme discutido na Seção~\ref{sec:calibracao_espectro}, os pesos e limiares heurísticos de emoção e engajamento -- herdados do algoritmo de \cite{nascimento2024nelson} -- podem ser expostos como parâmetros configuráveis por projeto e validados estatisticamente contra autorrelatos de usuários, permitindo adaptar o FeelFrame a diferentes domínios de objetos de aprendizagem sem alterações de código;
+    \item \textbf{Parametrização por interface}: exposição dos limiares de calibração (Tabela~\ref{tab:calibracao}) na própria interface do editor, permitindo que pesquisadores ajustem o modelo por sessão de teste sem depender de acesso ao código-fonte;
+    \item \textbf{Integração do UMAP ao relatório automático}: conforme discutido na Seção~\ref{sec:graficos_relatorio}, o método \texttt{calcular\_umap()} já está implementado no \texttt{RelatorioService}, mas não é acionado no fluxo padrão de geração do PDF; conectar essa etapa (e exportar as projeções 2D/3D como gráfico adicional do relatório) é uma extensão de baixo esforço com potencial de agregar uma visão de \textit{clusters} comportamentais ainda ausente do relatório atual.
 \end{itemize}
 
 \section{CONSIDERAÇÕES FINAIS}
@@ -988,6 +1120,100 @@ FeelFrame/
 \end{lstlisting}
 
 A coleção \texttt{markers} não possui índice de chave estrangeira nativo (MongoDB é um banco de documentos), porém a integridade referencial é garantida no nível da aplicação: ao excluir um projeto via \texttt{DELETE /files/videos/\{id\}}, o back-end executa \texttt{delete\_many(\{"video\_id": video\_id\})} na coleção \texttt{markers} antes de remover o documento principal, equivalendo ao comportamento de \textit{ON DELETE CASCADE} dos bancos relacionais.
+
+\chapter{GUIA DE DEPLOY E CONTINUIDADE CIENTÍFICA}
+\label{ap:deploy}
+
+Este apêndice documenta a esteira de \textit{deploy} do FeelFrame, de modo a permitir que pesquisadores que deem continuidade a este trabalho -- inclusive na linha de pesquisa de \cite{nascimento2024nelson} -- consigam publicar uma instância própria do sistema sem precisar reconstruir a infraestrutura do zero. A documentação completa e operacional (com todos os comandos) está mantida no arquivo \texttt{DEPLOY.md} na raiz do repositório; este apêndice resume sua estrutura e racional.
+
+\section{Arquitetura de Implantação}
+
+O FeelFrame foi projetado para ser implantado inteiramente sobre serviços gerenciados do Google Cloud, mantendo o mesmo núcleo tecnológico usado em desenvolvimento (Seção~\ref{cap:desenvolvimento}). O fluxo a seguir resume a arquitetura de implantação.
+
+\begin{lstlisting}[language=bash, caption={Arquitetura de deploy do FeelFrame}]
+GitHub (push na main)
+   |  GitHub Actions (.github/workflows/deploy.yml)
+   v
+Artifact Registry --> Cloud Run (feelframe-backend)  --> Firebase Storage
+                   --> Cloud Run (feelframe-frontend)      (videos/PDFs)
+                                                        --> MongoDB Atlas
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textbf{Back-end} (FastAPI + MediaPipe + DeepFace): containerizado via \texttt{back-end/Dockerfile} (Python 3.11-slim, com as bibliotecas de sistema exigidas pelo OpenCV/MediaPipe) e implantado no \textbf{Cloud Run}, servido com \texttt{gunicorn} e \textit{workers} \texttt{uvicorn};
+    \item \textbf{Front-end} (React/Vite): \textit{build} multi-\textit{stage} via \texttt{front-end/app/Dockerfile} (Node 22 para compilação, nginx 1.27-alpine para servir os arquivos estáticos), também implantado como serviço independente no Cloud Run -- ou, alternativamente, publicado no \textbf{Firebase Hosting} (Seção~\ref{sec:deploy-firebase-hosting});
+    \item \textbf{Armazenamento de arquivos}: vídeos originais, vídeos processados e relatórios PDF continuam no \textbf{Firebase Storage}, acessado por meio da abstração \texttt{storageFactory.py} descrita na Seção~\ref{cap:desenvolvimento} (com alternativa local via \texttt{STORAGE\_BACKEND=local} para desenvolvimento e testes);
+    \item \textbf{Banco de dados}: \textbf{MongoDB Atlas} (\textit{tier} gratuito M0), acessado via \texttt{MONGO\_URI}, sem exigir nenhuma alteração de código -- alternativamente, um MongoDB próprio pode ser hospedado em uma VM do Compute Engine para manter toda a infraestrutura dentro do Google Cloud.
+\end{itemize}
+
+\section{Contêinerização e Execução Local}
+
+O repositório inclui um \texttt{docker-compose.yml} na raiz que sobe back-end, front-end e MongoDB localmente em containers, útil para validar a esteira de \textit{build} antes de publicá-la em produção:
+
+\begin{lstlisting}[language=bash, caption={Execução local com Docker Compose}]
+docker compose up --build
+# front-end: http://localhost:3000
+# back-end:  http://localhost:8080
+\end{lstlisting}
+
+Por padrão, essa execução local usa \texttt{STORAGE\_BACKEND=local}, dispensando credenciais do Firebase -- o que facilita a reprodução do ambiente por outros pesquisadores sem acesso ao projeto Firebase original.
+
+\section{Pipeline de Integração e Entrega Contínua (CI/CD)}
+
+O workflow definido em \texttt{.github/workflows/deploy.yml} é disparado automaticamente a cada \textit{push} na branch \texttt{main} que altere arquivos em \texttt{back-end/} ou \texttt{front-end/app/}, ou manualmente pela aba \textbf{Actions} do GitHub. A esteira executa, em sequência:
+
+\begin{enumerate}
+    \item \textit{Build} da imagem do back-end e publicação no \textbf{Artifact Registry};
+    \item \textit{Deploy} do back-end no Cloud Run, injetando segredos de aplicação (chave JWT, \textit{connection string} do MongoDB, credenciais do Firebase) diretamente do \textbf{Secret Manager} do Google Cloud -- nenhum segredo é armazenado em texto plano no repositório ou no próprio workflow;
+    \item Captura da URL pública gerada para o back-end recém-implantado;
+    \item \textit{Build} da imagem do front-end utilizando essa URL como variável \texttt{VITE\_API\_BASE\_URL} embutida em tempo de compilação (por isso o front-end é sempre compilado \textit{depois} do back-end na esteira);
+    \item \textit{Deploy} do front-end no Cloud Run.
+\end{enumerate}
+
+Essa estratégia de segredos via Secret Manager, em vez de variáveis soltas no workflow, segue o princípio do menor privilégio: a \textit{service account} usada pelo GitHub Actions (\texttt{github-deployer}) recebe apenas as permissões \texttt{run.admin}, \texttt{artifactregistry.writer}, \texttt{iam.serviceAccountUser} e \texttt{secretmanager.secretAccessor}, necessárias estritamente para publicar e implantar as imagens.
+
+\section{Variáveis de Ambiente e Segredos}
+
+A Tabela~\ref{tab:deploy-env} resume as principais variáveis de ambiente do sistema, essenciais para qualquer pesquisador que deseje reproduzir o ambiente de produção ou adaptar o FeelFrame a uma nova infraestrutura de nuvem.
+
+\begin{table}[H]
+\centering
+\caption{Principais variáveis de ambiente do FeelFrame}
+\label{tab:deploy-env}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|p{6.5cm}|}
+\hline
+\textbf{Variável} & \textbf{Camada} & \textbf{Descrição} \\ \hline
+\texttt{MONGO\_URI} & Back-end (segredo) & \textit{Connection string} do MongoDB (Atlas ou VM própria) \\ \hline
+\texttt{JWT\_SECRET\_KEY} & Back-end (segredo) & Chave de assinatura HMAC-SHA256 dos tokens JWT \\ \hline
+\texttt{JWT\_EXPIRE\_HOURS} & Back-end & Tempo de expiração do token (168h = 7 dias) \\ \hline
+\texttt{STORAGE\_BACKEND} & Back-end & \texttt{firebase} (produção) ou \texttt{local} (testes/desenvolvimento) \\ \hline
+\texttt{FIREBASE\_STORAGE\_BUCKET} & Back-end & Bucket do Firebase Storage usado para vídeos e relatórios \\ \hline
+\texttt{VIDEO\_POOL\_WORKERS} & Back-end & Número de \textit{workers} do \texttt{ThreadPoolExecutor} para processamento paralelo \\ \hline
+\texttt{VITE\_API\_BASE\_URL} & Front-end (build-time) & URL pública do back-end; embutida no bundle, exige novo \textit{build} para alterar \\ \hline
+\end{tabular}%
+}
+\fonte{O Autor (2026)}
+\end{table}
+
+\section{Alternativa: Firebase Hosting para o Front-end}
+\label{sec:deploy-firebase-hosting}
+
+Como o projeto já utiliza o Firebase para armazenamento, o front-end também pode ser publicado no \textbf{Firebase Hosting} em vez do Cloud Run -- opção mais simples e econômica para um site puramente estático, com CDN global incluída no plano gratuito. Os arquivos de configuração (\texttt{firebase.json} e \texttt{.firebaserc}) já estão presentes em \texttt{front-end/app/}, apontando para o projeto do Firebase e configurando o \textit{rewrite} de SPA para \texttt{index.html}. Nesse cenário, o back-end continua sendo servido pelo Cloud Run normalmente, e o front-end no Hosting apenas consome sua API pública.
+
+\section{Riscos e Cuidados Conhecidos}
+
+A tentativa de reprodução deste ambiente por terceiros deve considerar os seguintes pontos, documentados a partir da experiência de implantação deste trabalho:
+
+\begin{itemize}
+    \item \textbf{Peso da imagem do back-end}: a combinação de TensorFlow, MediaPipe, DeepFace e OpenCV resulta em uma imagem Docker de vários gigabytes, exigindo \textit{builds} de CI mais longos e memória generosa (\texttt{--memory=4Gi --cpu=2}, podendo chegar a 8Gi em vídeos mais pesados);
+    \item \textbf{\textit{Cold start}}: como os modelos de aprendizado profundo são carregados na inicialização do contêiner, a primeira requisição após um período ocioso pode ser lenta; para demonstrações ao vivo, recomenda-se configurar \texttt{--min-instances=1} no Cloud Run, ciente do custo contínuo associado;
+    \item \textbf{Codec de vídeo H.264 em Linux}: o back-end grava vídeos processados com o \textit{fourcc} \texttt{avc1}; as distribuições Linux das \textit{wheels} do \texttt{opencv-python} frequentemente não incluem suporte a codificação H.264 por restrições de licenciamento, ao contrário do Windows (ambiente de desenvolvimento original). É necessário validar a geração de vídeo assim que o sistema for implantado em um ambiente Linux, com \texttt{mp4v} ou \texttt{imageio-ffmpeg} como alternativas;
+    \item \textbf{CORS irrestrito}: a configuração padrão do FastAPI libera \texttt{allow\_origins=["*"]}, adequada apenas ao escopo de desenvolvimento e avaliação acadêmica deste PGC -- deve ser restringida aos domínios finais antes de qualquer uso além desse escopo (Seção~\ref{sec:limitacoes});
+    \item \textbf{Custo}: por padrão o Cloud Run escala a zero, mantendo o custo de um projeto acadêmico de uso esporádico dentro da faixa gratuita mensal do Google Cloud, exceto quando \texttt{--min-instances=1} é mantido continuamente ativo.
+\end{itemize}
+
+Essa documentação, aliada à esteira de CI/CD já configurada no repositório, tem como objetivo reduzir a barreira de entrada para que outros pesquisadores -- inclusive os continuadores diretos do trabalho de \cite{nascimento2024nelson} -- possam publicar suas próprias instâncias do FeelFrame para fins de coleta de dados, validação experimental ou extensão das funcionalidades descritas na Seção~\ref{cap:desenvolvimento}.
 
 \end{apendicesenv}
 
